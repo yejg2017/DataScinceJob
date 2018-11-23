@@ -1,0 +1,207 @@
+---
+title: "STA304H1F/1003HF Fall 2018 Assignment"
+author: "RyanYip"
+date: "2018å¹<b4>10æœ<88>25æ—<a5>"
+output:
+  word_document: default
+  html_document: default
+---
+
+# Exercise 1
+##  Load data
+```{r}
+certify=read.csv("./certify.csv",header = TRUE)
+summary(certify)
+```
+
+** Summary ** function show each variable's value in * Min,1st Qu,Median,3rd qu,Max *
+
+## (a)
+```{r}
+set.seed(20181025) # set seed
+
+#Take a simple random sample without replacement of size 100
+idx=sample(1:dim(certify)[1],size = 100,replace = FALSE) 
+sub.certify=certify[idx,]
+
+
+
+#estimate the proportion of respondents who think that ASA should develop some form of certification (YES=1)
+n_yes=sum(sub.certify$certify==1)
+prob=n_yes/dim(sub.certify)[1]
+sprintf("the proportion
+of respondents who think that ASA should develop some form of certification is : %f",prob)
+```
+
+
+## (b)
+
+* 1) the sample proportion:p_hat=x/n
+* 2) z-score:(p_hat-p)/sqrt(pq/n),where q=1-p
+* 3) E=z_alpha_2* sqrt(pq/n)
+* 4) **alpha** confidence interval: p_hat-E<p<p_hat+E,and E=z_alpha_2*sqrt(p_hat x q_hat/n)
+
+```{r}
+alpha=1-0.95
+n=dim(sub.certify)[1]
+p_hat=n_yes/n
+q_hat=1-p_hat
+
+z_alpha_2=qnorm(p=1-alpha/2)
+E=z_alpha_2*sqrt(p_hat*q_hat/n)
+
+var_p_hat=p_hat*q_hat/n  # var(p_hat),p_hat variance
+lower=p_hat-E  # lower confidence interval
+upper=p_hat+E  # upper confidence interval
+```
+
+Follow the above analysis,the variance p_hat is `r var_p_hat`,the 95% confidence interval is (`r lower`,`r upper `)
+
+
+## (c)
+
+We have know that,** E=z_alpha_2 x sqrt(p_hat*q_hat/n) **,in this,n(to be estimated) is not know,the p_hat  be estimated in part(a).part(c) tells us that B=5%.
+
+Get: 
+   0.025=E,where p_hat,q_hat,z_alpha we can know,so n=1/(0.025/z_alpha_2)**2 x (p_hat x q_hat)
+```{r}
+B=0.05
+z_alpha=qnorm(1-B/2)
+
+n_hat=ceiling(1/(0.025/z_alpha_2)**2 * (p_hat * q_hat))
+sprintf("the sample size n be estimated is about:%f",n_hat)
+```
+So  we would need a sample of about 1100 sample.
+
+
+## (d)
+Recalculate parts (a) and (b) using the sample size *n_hat* `r n_hat` obtained in part (c)
+
+### recaculate part(a)
+```{r}
+set.seed(20181025) # set seed
+
+#Take a simple random sample without replacement of size 100
+idx=sample(1:dim(certify)[1],size = n_hat,replace = FALSE) 
+sub.certify=certify[idx,]
+
+
+
+#estimate the proportion of respondents who think that ASA should develop some form of certification (YES=1)
+n_yes=sum(sub.certify$certify==1)
+prob=n_yes/dim(sub.certify)[1]
+sprintf("the proportion of respondents who think that ASA should develop some form of certification is : %f",prob)
+```
+
+
+### recaculate part(b)
+```{r}
+alpha=1-0.95
+n=dim(sub.certify)[1]
+p_hat=n_yes/n
+q_hat=1-p_hat
+
+z_alpha_2=qnorm(p=1-alpha/2)
+E=z_alpha_2*sqrt(p_hat*q_hat/n)
+
+var_p_hat=p_hat*q_hat/n  # var(p_hat),p_hat variance
+lower=p_hat-E  # lower confidence interval
+upper=p_hat+E  # upper confidence interval
+sprintf("the confidence interval range is :%f",upper-lower)
+```
+
+Follow the above analysis,the variance p_hat is `r var_p_hat`,the 95% confidence interval is (`r lower`,`r upper `),the confidence interval range is `r upper-lower`
+
+
+
+# Exercise 2
+##  Load data
+```{r}
+goals=read.csv("./goals.csv",header = TRUE)
+summary(goals)
+```
+
+## (a)
+```{r}
+goal_mean=mean(goals$goal) # cacualate population mean
+goal_var=var(goals$goal) # caculate population variance
+
+hist(goals$goal,xlab = "goal",main=NULL,col="red")  # Draw a histogram
+```
+
+The population mean is `r goal_mean`,population variance is `r goal_var`.and the histogram show us that the center of goal is  about 80,proportion of lower goal(50,60) is lower.
+
+## (b)
+```{r}
+set.seed(20181026)
+goal=goals$goal
+
+idx_raw=sample(1:length(goal),size=10,replace = FALSE)
+goal_1=goal[idx_raw]#  Select a simple random sample of 10 grades.
+
+goal_1_mean=mean(goal_1)
+goal_1_var=var(goal_1)
+
+hist(goal_1,xlab = "goal",main=NULL,col="red",breaks = 10)  # Draw a histogram
+```
+the sample mean is `r goal_1_mean`,sample variance is `r goal_1_var`
+
+
+## (c)
+
+#### Repeat part (b) 49 additional times and combine to have 50 sample means
+```{r}
+goal_sample=data.frame(sample_1=goal_1)
+idx_raw=data.frame(idx_1=idx_raw)
+RepeatSample<-function(raw=goal_sample,idx=idx_raw,size=10,times=49){
+  for(i in 1:times){
+    idx=sample(1:length(goal),size=size,replace = FALSE)
+    sample_x=data.frame(goal[idx])
+    sample_idx=data.frame(idx)
+    
+    colnames(sample_x)=paste0("sample_",i+1)
+    colnames(sample_idx)=paste0("idx_",i+1)
+    raw=cbind.data.frame(raw,sample_x)
+    idx_raw=cbind.data.frame(idx_raw,sample_idx)
+  }
+  
+  return(list(raw,idx_raw))
+}
+
+goal_sample=RepeatSample(raw = goal_sample)
+```
+
+
+#### Draw a histogram to describe your 50 sample means.
+```{r}
+goal_sample_mean=apply(goal_sample[[1]],2,mean) #  50 sample mean
+goal_sample_var=apply(goal_sample[[1]],2,var) # 50 sample variance
+
+goal_sample_index=goal_sample[[2]]  # the index positions of your 50 samples
+hist(goal_sample_mean,xlab = "50 sample mean",main=NULL,col="red")  # Draw a histogram
+```
+
+#### Now find the sample mean and sample variance of the 50 sample means
+```{r}
+sprintf("the sample mean of the 50 sample means : %f ",mean(goal_sample_mean))
+sprintf("the sample variance of the 50 sample means : %f ",var(goal_sample_mean))
+```
+
+Based on th above result,the mean and variance in 
+
+*  part(a) : mean :`r goal_mean`--- variance :`r goal_var`,
+*  part(b) : mean :`r goal_1_mean`--- variance`r goal_1_var`
+*  part(c)(here) : mean : `r mean(goal_sample_mean)`---variance `r var(goal_sample_mean)`
+
+Compare with  histogram, mean and variance above these,the mean across them have small difference,but the variance differ greatly.Variance(part c) < Variance(part b) < Variance (part c)
+
+
+
+## (d)
+
+   According to the result in part(c),I consider that the mean and variance of the  random  sample means
+are  two potential stratification variables for grade goal.In part(c),Comparison shows us that sample mean distribution has more lower variance and centers,which represents more accurate sample.
+   Comparison to simple random sampling,this sample method has more lower variance ,but loss more randomness and representativeness.
+
+
+

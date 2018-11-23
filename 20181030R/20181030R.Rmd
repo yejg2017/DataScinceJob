@@ -1,0 +1,204 @@
+---
+title: "Econ 4010 Homework 6"
+author: "RyanYip"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r,warning=FALSE,echo=FALSE}
+library(quantmod)
+library(stringr)
+library(tseries)
+library(ggplot2)
+Sys.setlocale("LC_TIME", "American")
+```
+
+
+```{r,echo=FALSE}
+FITB=as.data.frame(getSymbols("FITB",auto.assign = FALSE,src = "yahoo",from="2018-01-01",to="2018-10-01"))
+
+KR=as.data.frame(getSymbols("KR",auto.assign = FALSE,src = "yahoo",from="2018-01-01",to="2018-10-01"))
+
+dim(FITB)[1]
+dim(KR)[1]
+```
+
+
+## Question 1
+```{r,echo=FALSE}
+time=as.Date(rownames(FITB))
+Investment=as.numeric(FITB[,4])
+FITB.returns=Investment/Investment[1]  # returns
+
+plot(time,FITB.returns,type="l",col="red",xlab = "")
+```
+
+## Question 2
+```{r,echo=FALSE}
+Investment_diff= diff(FITB.returns,lag=1,trim=TRUE)
+Investment_diff = Investment_diff[!is.na(Investment_diff)]
+
+# Plot log returns 
+plot(time[-1],Investment_diff,type='l', main=NULL,xlab ="",ylab = "Investment difference",col="red")
+```
+
+
+## Question 3
+```{r,echo=FALSE}
+apply(FITB,2,sd)
+
+acf(ts(FITB.returns))
+pp.test(ts(FITB.returns),alternative = "stationary")
+```
+
+According to the ACF plot,The above ACF is ¡°decaying¡±, or decreasing, very slowly, and remains well above the significance range (dotted blue lines). This is indicative of a non-stationary series.And the ** Phillips¨CPerron Unit Root Test ** also tells us that ,the p-value of test is greater 0.05,which indicates that it is not significant.So,we can conclude that,this variable is not stationary.
+
+
+## Question 4
+```{r,echo=FALSE}
+KR.Investment=KR[,4]
+KR.returns=KR.Investment/KR.Investment[1]  # returns to Kroger stock
+
+acf(ts(KR.returns))
+pp.test(ts(KR.returns),alternative = "stationary")
+```
+According to the result got from above analysis,the analysis process and result is same as Question 3.So this variable is not stationary.
+
+
+#### Plot the difference of KR returns
+```{r,echo=FALSE}
+KR.returns.diff=diff(KR.Investment)
+plot.ts(ts(KR.returns.diff))
+
+
+sprintf("pp test on difference of KR returns \n")
+pp.test(ts(KR.returns.diff))
+```
+The plot and pp test  shows that the difference of KR returns is stationary.
+
+
+## Question 5
+```{r,echo=FALSE}
+
+KR.returns.lag_1=lag(KR.returns.diff,-1)
+KR.returns.lag_2=lag(KR.returns.diff,-2)
+
+FITB.returns.diff=diff(FITB.returns)
+FITB.returns.lag_1=lag(FITB.returns.diff,-1)
+FITB.returns.lag_2=lag(FITB.returns.diff,-2)
+
+Data=data.frame(KR.diff=as.numeric(KR.returns.diff),
+                KR.lag_1=as.numeric(KR.returns.lag_1),
+                KR.lag_2=as.numeric(KR.returns.lag_2),
+                FITB.lag_1=as.numeric(FITB.returns.lag_1),
+                FITB.lag_2=as.numeric(FITB.returns.lag_2))
+
+```
+
+```{r,echo=FALSE,warning=FALSE}
+model=lm(KR.diff~KR.lag_1+KR.lag_2+FITB.lag_1+FITB.lag_2,data=Data)
+summary(model)
+```
+
+According to the summary of regression model,the coefficient of lag 1 on difference of returns to FITB if significant,which indicates that lag 1 on FITB affect the difference of returns to Kroger stock.
+
+## Question 6
+```{r,echo=FALSE}
+HWTrends<-read.csv("./HWTrends.csv",header = TRUE)
+Ham=HWTrends$Ham
+
+par(mfrow=c(1,3))
+pacf(Ham)
+acf(Ham)
+plot.ts(ts(Ham))
+adf.test(Ham,alternative = "stationary")
+```
+
+The graph show us that,the acf ,pacf decay quikly,and ts plot has not obvious trend.
+we also call the ADF test on the Ham series data to check for stationarity. The p-value of  0.01   from the ADF test tells us that the series  Ham  is stationary
+
+
+
+## Question 7
+```{r,echo=FALSE}
+Caddyshack=HWTrends$Caddyshack
+
+par(mfrow=c(1,3))
+pacf(Caddyshack)
+acf(Caddyshack)
+plot.ts(ts(Caddyshack))
+adf.test(Caddyshack,alternative = "stationary")
+```
+The result is same as the question 6(Ham variable).And we get the same conclusion.So variable Caddyshack is stationary
+
+## Question 8
+```{r,echo=FALSE,eval=FALSE}
+Caddyshack=ts(HWTrends$Caddyshack)
+Caddyshack_lag5=lag(Caddyshack,lag = -5)
+
+plot(Caddyshack_lag5,main="Lag 5 on Caddyshack")
+```
+
+### Fit Autoregressive Models on Caddyshack 
+```{r,echo=FALSE}
+model=ar(Caddyshack,aic = TRUE,order.max = 5)
+model
+```
+According to the result above,the model best lag is `r model$order `
+
+
+## Question 9
+```{r,echo=FALSE}
+Ham_lag3=lag(Ham,-3)
+LeftOvers=HWTrends$Leftovers
+LeftOvers_lag2=lag(LeftOvers,-2)
+
+ccf(Ham,LeftOvers,main="Ham vs LeftOvers",ylab = "cross-correlation")
+```
+According to the  CCF graph  acrross variable Ham and LeftOvers ,It has strong correlation for lags -3 to 0 with tapering in both directions.
+
+
+
+#### Run linear regression
+
+Formula:  c(Leftovers_lag_1,Leftovers_lag_2) ~ Ham_lag_1+Ham_lag_2+Ham_lag_3
+
+```{r}
+Data=data.frame(LeftOvers_lag_1=lag(LeftOvers,-1),
+                LeftOvers_lag_2=lag(LeftOvers,-2),
+                Ham_lag_1=lag(Ham,-1),
+                Ham_lag_2=lag(Ham,-2),
+                Ham_lag_3=lag(Ham,-3))
+```
+
+```{r,echo=FALSE}
+lm.model=lm(cbind(LeftOvers_lag_1,LeftOvers_lag_2)~0+Ham_lag_1+Ham_lag_2+Ham_lag_3,data=Data)
+summary(lm.model)
+```
+According to summary of the regression model, the coefficients of the Ham lag 1 is significant,which indicates that the lag 1 of Ham  has strong correlation accross LeftOvers_lag_1 and LeftOvers_lag_2. So I have reason to believe searches for ¡°Ham¡± affect the number of searches for ¡°Leftovers¡±.
+
+
+## Question 10
+
+*  H0:  remove variable Ham from regression  model with responce Leftovers
+*  H1:  not remove variable Ham from regression  model with responce Leftovers
+
+```{r,echo=FALSE,warning=FALSE}
+library(lmtest)
+df=HWTrends[,c("Ham","Leftovers")]
+```
+
+
+#### stationary test
+```{r}
+adf.test(df$Ham)
+```
+
+According to the adf.test,Ham is stationary
+
+#### Granger causality test 
+```{r,echo=FALSE}
+lmtest::grangertest(Leftovers~Ham,data=df,order=3)
+```
+The p-value of the above result is 0.1734,which tells us that we can not reject the H0.According to the test,we can not conclude that whether this variable can use to be a predictor  for Leftovers.

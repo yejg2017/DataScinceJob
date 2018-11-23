@@ -1,0 +1,172 @@
+---
+title: "20181016 hoemwork"
+author: "RyanYip"
+date: "2018骞<b4>10鏈<88>16鏃<a5>"
+output:
+  word_document: default
+  html_document: default
+---
+
+### load data
+```{r}
+wagexp=read.csv("./wagexp.csv",header = TRUE)
+```
+
+### check NA value and duplicated values
+```{r}
+sum(is.na(wagexp))  # there is no NA value
+wagexp=wagexp[!duplicated(wagexp),]
+```
+
+there is `r dim(wagexp)[1]` observation
+
+```{r}
+predictor=c("AGE","EXP","HSDRoP","HSGRAD","ASSOC","FEMALE")
+all.model=lm(WAGE~AGE+I(AGE^2)+EXP+HSDROP+HSGRAD+ASSOC+FEMALE,data = wagexp)
+model.summary=summary(all.model)$coefficients
+confidents=confint(all.model)
+summary(all.model)
+```
+
+### question 1
+
+
+H0:WAGE~a1*AGE+a2*I(AGE^2)+a4*HSDROP+a5*HSGRAD+a6*ASSOC+a7*FEMALE+a0
+
+H1:WAGE~a1*AGE+a2*I(AGE^2)+a3*EXP+a4*HSDROP+a5*HSGRAD+a6*ASSOC+a7*FEMALE+a0
+
+H0 成立的前提下:
+formule: t=beta3_hat/sqrt(sd(beta3) 服从自由度为n-p的t分布
+
+
+p{|t.vale|<t(1-alpha/2;n-p)}=1-alpha
+
+则自信区间:(beta3_hat-s{beta3_hat}*t(1-alpha/2;n-p),beta3_hat+s{beta3_hat}*t(1-alpha/2;n-p))
+
+```{r}
+beta3_hat=model.summary["EXP","Estimate"]
+std_beta3=model.summary["EXP","Std. Error"]
+
+t.value=beta3_hat/std_beta3
+beta_confitdence=confidents["EXP",]
+cat("the t value :",t.value,"\n")
+print(beta_confitdence)
+```
+已知p值为0.37,t value值也不在置信区间内,所以，不能拒绝H0;即beta3不能判断为0
+
+
+### question 2
+
+```{r}
+require(car)
+car::vif(all.model)
+```
+
+Based on the ** VIF ** funtion on above model,the VIF value AGE,AGE^2,EXP  are larger than 10;so  we can conclude that the data exist multicolliearity and  these estimates are suffering from multicolliearity.
+
+
+
+### question 3
+```{r}
+plot(wagexp[,"AGE"],wagexp[,"EXP"],col='red',
+     xlab = "age",
+     ylab = "experience",
+     main=paste0("the correlation of age against experience is\n",cor(wagexp[,"AGE"],wagexp[,"EXP"])))
+```
+
+the correlation coefficient and plot tells us that the variable ** AGE ** and **Experience** is highly correlated
+
+
+### question 4
+
+```{r}
+cor(wagexp[,c("AGE","FEMALE","HSDROP","HSGRAD","ASSOC","EXP")])
+car::vif(all.model)
+```
+
+I consider that this model suffer from multicollinearity:
+* 1) the VIF value of AGE,EXP are larger than 10;
+
+* 2) the correlation coefficient between ** AGE ** and ** EXPERIENCE ** is larger than 0.9, ** HSGRAD** and ** ASSOC ** also has -0.4
+
+* 3) the ** EXPERIENCE ** estimate coefficient is **-0.071574**,which tell us that EXPERIENCE has negative effect on WAGE,this is incorrect ,it is not consistenct with commond sence. 
+
+
+### question 5
+
+```{r}
+wagexp$ln.wage=log2(wagexp$WAGE)
+new.model=lm(ln.wage ~ log2(AGE)+ED*FEMALE,data=wagexp)
+summary(new.model)
+new.model.summary=summary(new.model)$Coefficient
+new.model.confident=confint(new.model)
+```
+
+Based on summary of new model,the beta1  coefficiet is 0.51568 , it represent that,ln(AGE)has a positive affect on  ln(wage) ,when ln(age) add one unit,and ln(wage) add 0.51568 unit
+
+
+
+### question 6
+
+We can know the estimate ** beta4 ** is 0.01495;When female=1,eudcation add one unit,and ln(wage) add`r 0.13245+0.01495` unit;when female=0,education add one unit,and ln(wage) add 0.13245 unit;the comparsion tell us that the sexes increse `r exp(0.1495)` rate in wage.So sex  is exactly correlated with eduaction in wage.
+
+
+
+### question 7
+Run the following regression model:
+
+* step 1) ln(wage )~ b_0+ b_1*ln(AGE) + b_2*FEMALE + b_3*ED+ be_4FEMALE*ED+sigma
+
+* step 2) sigma_hat~phi_0+phi_1*ln(wage)_hat+phi_2*ln(wage)^2
+
+* step 3) Retain the R-squared value from the  regression(step 2):R-squre_phi
+
+* step 4)Calculate the F-statistic or the chi-squared statistic:
+         chi=n*R-squre_phi  ~chi(3)
+         
+If either of these test statistics is significant, then you have evidence of heteroskedasticity. If not, you fail to reject the null hypothesis of homoskedasticity
+
+
+```{r}
+lnwage_hat=fitted(new.model) # y_hat
+df=data.frame(res=residuals(new.model),lnwage_hat=lnwage_hat)
+
+
+new2.model=lm(res~lnwage_hat+I(lnwage_hat^2),data=df)
+summary(new2.model)
+R.squre=summary(new2.model)$r.square
+
+chi=dim(df)[1]*R.squre
+pchisq(chi,df=3)
+```
+the p-value of  White’s test for heteroskedasticity is `r pchisq(chi,df=2)`,which is larger than 0.05.It is not sinificant.So we have not enough reason to believe that the model has heteroskedasticity
+
+
+### question 8
+```{r}
+Res=residuals(new.model)
+plot(wagexp[,"ED"],Res,col="red",xlab="education",ylab="residual")
+abline(h = 0)
+```
+The plot show us  that the distribution of the scattered points on both sides of the residual error is uniform.So I think the education variable do not look heteroskedastic.
+
+
+### question 9
+We can run a regression with White’s corrected standard errors(a robust linear regression),which cabn remove the effect of  heteroskedasticity.
+```{r}
+require(MASS)
+robust.model=rlm(ln.wage ~ log2(AGE)+ED*FEMALE,data=wagexp)
+summary(robust.model)
+```
+
+From the  summary result of robust model ,wo know that ** beta1** is 0.5760,and in the origin model is 0.5157;and ** Std. Error,t value ** between them are also similar.Compared to question 5, we can conclude that there is almost no difference.
+
+
+### question 10
+I do not consider this model suffers from heteroskedasticity.
+
+* 1) According to the question 7,we know that White’s test for heteroskedasticity on this model is not significant.So there is not enough reason to believe that this model has heteroskedasticity.And we consider it has not.
+
+* 2) According to the question 8,the plot of residual against eduacation tells us,this model does not have heteroskedasticity.
+
+* 3) The coefficients  between this model and robust model is are so similar.It is an another reason .

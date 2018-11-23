@@ -1,0 +1,248 @@
+---
+title: 'BUAN 4310 Assignment #2'
+author: "Meng She"
+date: "10/22/2018"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+library(class)
+```
+
+# Exploring and preparing the data
+```{r}
+# 1. Import and read the csv data file.
+lego <- read.csv("lego_sets_1.csv")
+lego<-na.omit(lego)
+```
+
+```{r}
+# 2. Examine the structure of the wbcd data frame.
+str(lego)
+```
+##### 10486 observation and 14 features
+#####ages: age group
+#####list_price: price for sell
+#####num_reviews: numbers of reviews for this set
+#####piece_count: how many pieces in this Lego set
+#####play_star_rating: star rating for this lego set, highest is 5 star
+#####prod_desc: product descriptions
+#####prod_id: product id
+#####prod_long_desc:product description in details
+#####review_difficulty: difficulty level, 5 level with 'Very easy';'Easy'; 'Average';'Challenging'; 'Very challenging'
+#####set_name: name of this set
+#####star_rating: star rating of this set
+#####theme_name: theme name of this set
+#####val_star_rating: 
+#####country: countries that sell this set
+
+#### Each observation is a different lego set and there are features like how many pieces are in the set, how much the set sells for, etc. 
+#### numerical features:number of pieces,ratings,price
+#### categorical: set_name, ages_bucket, difficulty
+#### charcter :description
+
+```{r}
+# 3. Drop features
+lego$prod_long_desc<-NULL
+lego$prod_desc <- NULL
+lego$prod_id <- NULL
+lego$set_name <- NULL
+lego$theme_name <- NULL
+lego=na.omit(lego)
+```
+- These features does not provide useful information, and we will need to exclude them from the model.
+
+```{r}
+# 4. Find the target variable. How many levels this variable have?
+table(lego$country)
+```
+- 2 levels 
+
+```{r}
+# 5. Transform this nominal variable to factor and give its levels a better names. What are their correspondent鈥檚 percentage with 1 decimal place?
+lego$country <- factor(lego$country, levels = c("NON US","US"), labels = c("None USA","USA"))
+```
+
+```{r}
+round(prop.table(table(lego$country)) * 100, digits = 1)
+```
+
+# Transformation - normalizing numeric data
+```{r}
+# 1. Create the normalize() function and check if it work correctly using a vector of numbers before applying this function to the whole data.
+# create normalization function
+normalize <- function(x) {
+return ((x - min(x)) / (max(x) - min(x)));
+}
+# test normalization function - result should be identical
+normalize(c(1, 2, 3, 4, 5))
+normalize(c(10, 20, 30, 40, 50))
+```
+
+```{r}
+# 2. To apply the normalize() function to the whole data use the lapply() function. 
+lego_n <- as.data.frame(lapply(lego[2],normalize))
+```
+
+```{r}
+summary(lego_n$list_price)
+```
+
+
+```{r}
+lego=na.omit(lego)
+```
+
+```{r}
+lego$star_rating=as.numeric(as.character(lego$star_rating))
+lego$val_star_rating=as.numeric(as.character(lego$val_star_rating))
+
+print(apply(lego,2,function(x){
+  sum(is.na(x))
+}))
+```
+
+
+```{r}
+M=mean(lego$val_star_rating,na.rm = TRUE)
+index=1:length(lego$val_star_rating)
+na.index=index[is.na(lego$val_star_rating)]
+lego$val_star_rating[na.index]=M
+
+
+lego$list_price=normalize(lego$list_price)
+lego$num_reviews=normalize(lego$num_reviews)
+lego$piece_count=normalize(lego$piece_count)
+lego$play_star_rating=normalize(lego$play_star_rating)
+
+
+lego$star_rating=normalize(lego$star_rating)
+lego$val_star_rating=normalize(lego$val_star_rating)
+```
+
+# Data preparation - creating training and test datasets
+```{r}
+# 1. Create those training and test sets
+set.seed(12345)
+lego_train_sample <- order(runif(dim(lego)[1]))
+lego_train <- lego[lego_train_sample[1:6000],-dim(lego)[2]]
+lego_test <- lego[lego_train_sample[6001:length(lego_train_sample)],-dim(lego)[2]]
+```
+
+```{r}
+# 2. Can you store its correspondents target variable in 2 separate vectors?
+lego_train_lables <- lego[lego_train_sample[1:6000],"country"]
+lego_test_lables <- lego[lego_train_sample[6001:length(lego_train_sample)],"country"]
+```
+
+# Training a model on the data
+```{r}
+# Install the class package in R
+install.packages("class")
+library(class)
+# p <- knn(train, test, class, k)
+```
+
+```{r}
+# 2. Find k.
+K=ceiling(sqrt(dim(lego_train)[1]))
+print(K)
+# k = 99
+```
+
+```{r}
+# 3. Use the knn() function from the class package to classify the test data.
+lego_test_pred <- knn(train = lego_train[,-c(1,6)], test=lego_test[,-c(1,6)], cl = lego_train_lables, k = K)
+```
+remove the variabel ** ages ** and ** review_difficulty ** ,the model works.
+
+
+# Evaluating model performan
+```{r}
+# load the "gmodels" library(gmodel)
+library(gmodels)
+```
+
+```{r}
+#Create the cross tabulation 
+CrossTable(x = lego_test_lables,y=lego_test_pred,prop.chisq = FALSE)
+```
+## 2. Accuracy of the model on test data
+```{r}
+confusion.mat=as.matrix(table(lego_test_lables,lego_test_pred))
+sprintf("the test accuracy is : %f",sum(diag(confusion.mat))/sum(confusion.mat))
+```
+
+
+## 3 Discuss and explain the results of using this model by looking into the false negative and the false positive numbers.
+
+Based on the above table got from ** CrossTable ** table,the  false negatives rate is **0.074**,the false positives rate is ** 0.0 **,the true positives rate is ** 0.926 **,the true negatives rate is ** 0 **.
+
+
+## Is it possible to improve the performance of this model
+```{r}
+prop.table(table(lego_train_lables))
+```
+
+The ** prob.table ** shows us the label ** None USA **  ratio of possession is as high as 93.5%,which tells us that  this binary classifier is trained on imbalanced dataset.So it is possible to improve the performance of this model
+
+
+
+# 5. Improving model performance
+## 1.rescaling our numeric features using z-score
+```{r}
+lego_train=lego_train[,-c(1,6)]
+lego_test=lego_test[,-c(1,6)]
+
+lego_train_scale=as.data.frame(scale(lego_train))
+lego_test_scale=as.data.frame(scale(lego_test))
+
+summary(lego_train_scale)
+```
+
+### re-train model
+```{r}
+lego_test_pred_new <- knn(train = lego_train_scale, test=lego_test_scale, cl = lego_train_lables, k = K)
+CrossTable(x = lego_test_lables,y=lego_test_pred_new,prop.chisq = FALSE)
+```
+Compare to the previous model,unfortunately,it does not improve performance.So the strategy of rescaling our numeric features using z-score fail.
+
+## 2.Try other k value
+```{r}
+k=5:ceiling(sqrt(dim(lego_train)[1]))
+accuracy=c()
+for(i in k){
+  pred=knn(train = lego_train, test=lego_test, cl = lego_train_lables, k = i)
+  confusion.m=as.matrix(table(lego_test_lables,pred))
+  acc=sum(diag(confusion.m))/sum(confusion.m)
+  accuracy<-c(accuracy,acc)
+}
+
+plot(k,accuracy,type = "o",col="red")
+```
+the different k in model vs accuracy plot tells that ,when **k=12**,model's accuarcy is ** 0.927 **,only improve 1%.So this method also do not imporve apparent.
+
+
+# Try anothet model(额外尝试而已,纯粹尝试，无关)
+
+According to the knowlage,the ** random forest model** can handle imbanlance dataset well.So we try random forest model
+```{r}
+library(randomForest)
+```
+
+```{r}
+rf=randomForest(lego_train,lego_train_lables,importance = TRUE,proximity = TRUE,oob.prox = TRUE)
+rf.pred=predict(rf,lego_test)
+```
+
+```{r}
+confusion.mat.rf=as.matrix(table(lego_test_lables,rf.pred))
+sprintf("the test accuracy is : %f",sum(diag(confusion.mat.rf))/sum(confusion.mat.rf))
+```
+```{r}
+CrossTable(x = lego_test_lables,y=rf.pred,prop.chisq = FALSE)
+```
+Fortunately,the accuracy of randomforest model is ** 95.3% **,it increase 3%.So the randomforest model perform better than KNN model
+

@@ -1,0 +1,175 @@
+---
+title: "490rt"
+output:
+  pdf_document: default
+  html_document: default
+---
+```{r}
+library(ggplot2)
+library(dplyr)
+library(funModeling)
+library(Hmisc)
+data = read.csv("/Users/haoqingchen/Desktop/sta490rt/rt.csv")
+basic_eda <- function(data)
+{
+  glimpse(data)
+  df_status(data)
+  freq(data) 
+  profiling_num(data)
+  plot_num(data)
+  describe(data)
+}
+```
+#Analysis of the relationship between sleep and reaction time
+For the analysis of sleep, I created 4 plot which are scatter plot, boxplot, barplot, as well as frequency plot. First of all, the scatter plot does not show a linear relationship between the amount of sleep and reaction time since the plots do not increase/decrease constantly. And the boxplot indicates there are three outliers while median falls in 8 hours of sleep. The next colorful graph is the average reaction time in terms of different amount of sleep. I find it interesting that the the slowest reaction time does not happen in neither shortest nor longest sleep time. The last frequency graph shows that people who sleep 8 hours per day occupy 24.68%.
+```{r}
+amount_of_sleep = data$Sleep
+reaction_time = data$RT
+mean(data$Sleep, na.rm= T)
+plot(amount_of_sleep, reaction_time)
+summary(data$Sleep)
+par(mfrow = c(1,2))
+boxplot((data$Sleep), ylab = "Amount of Sleep")
+af <- na.omit(data)
+af$Sleep <- as.factor(af$Sleep)
+ggplot(summarise(group_by(af, Sleep), RT = mean(RT)),aes(x= Sleep, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Sleep, fill = Sleep))
+summarise(group_by(af, Sleep), mean(RT))
+freq(data$Sleep)
+```
+
+#Analysis of stimulant
+For stimulant variable, I have the two-side boxplot to compare the mean reaction time value. I did not take out the missing data because they are not useless in this case. I treat them like a reference group. And in frequency plot, it is obvious that most of the people did not use stimulant during the test.
+```{r}
+stimulant = data$Stimulant
+ggplot(data,aes(x = factor(stimulant),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by stimulant",
+       x = "stimulant",
+       y = "reaction time")
+af$Stimulant <- as.factor(af$Stimulant)
+ggplot(summarise(group_by(af, Stimulant), RT = mean(RT)),aes(x= Stimulant, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Stimulant, fill = Stimulant))
+summarise(group_by(af, Stimulant), mean(RT))
+freq(stimulant)
+```
+
+#Fatigue
+The graph below basically shows the distribution of reaction time in terms of fatigue levels, and I did not exclude the missing data since it does not affect the result very much.
+```{r}
+fatigue_scale = data$Fatigue
+mean(data$Fatigue, na.rm= T)
+plot(fatigue_scale, reaction_time)
+summary(data$Fatigue)
+par(mfrow = c(1,2))
+af$Sleep <- as.factor(af$Fatigue)
+ggplot(summarise(group_by(af, Fatigue), RT = mean(RT)),aes(x= Fatigue, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Fatigue, fill = Fatigue))
+summarise(group_by(af, Fatigue), mean(RT))
+freq(data$Fatigue)
+ggplot(data,aes(x = factor(fatigue_scale),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by fatigue",
+       x = "fatigue",
+       y = "reaction time")
+```
+
+#Hunger
+In the scatter plot below, it presents that most of the people test their reaction time near a hunger level of 4. When hunger level reaches 6, it is more likely that the person would have the fastest reaction speed.
+```{r}
+hunger_scale = data$Hunger
+mean(data$Hunger, na.rm= T)
+plot(hunger_scale, reaction_time)
+summary(data$Hunger)
+par(mfrow = c(1,2))
+af$Hunger <- as.factor(af$Hunger)
+ggplot(summarise(group_by(af, Hunger), RT = mean(RT)),aes(x= Hunger, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Hunger, fill = Hunger))
+summarise(group_by(af, Hunger), mean(RT))
+freq(data$Hunger)
+ggplot(data,aes(x = factor(hunger_scale),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by hunger",
+       x = "hunger",
+       y = "reaction time")
+```
+#heavy/light day
+I used number 0 to represent light day and 1 for busy day. According to the plots below, it is easy to find that normally people react faster in light days.
+```{r}
+day_type = data$Type
+mean(data$Hunger, na.rm= T)
+plot(day_type, reaction_time)
+summary(data$Type)
+par(mfrow = c(1,2))
+af$Type <- as.factor(af$Type)
+ggplot(summarise(group_by(af, Type), RT = mean(RT)),aes(x= Type, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Type, fill = Type))
+summarise(group_by(af, Type), mean(RT))
+freq(data$Type)
+ggplot(data,aes(x = factor(day_type),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by day type",
+       x = "type",
+       y = "reaction time")
+```
+
+#illness
+Most of the people test their reaction time without illness, and I did not exclude the missing data because I personally believe that the data is gathered when healthy. Normally people would record illness when sick. And surprisingly that reaction time did not increase when people are sick, maybe it is because our sample size is not large enough.
+```{r}
+illness = data$illness
+mean(data$illness, na.rm= T)
+plot(illness, reaction_time)
+summary(data$illness)
+par(mfrow = c(1,2))
+af$illness <- as.factor(af$illness)
+ggplot(summarise(group_by(af, illness), RT = mean(RT)),aes(x= illness, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = illness, fill = illness))
+summarise(group_by(af, illness), mean(RT))
+freq(data$illness)
+ggplot(data,aes(x = factor(illness),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by illness",
+       x = "illness",
+       y = "reaction time")
+```
+
+#Protocol
+Most of the people record themself following the protocol when testing reaction time.
+```{r}
+protocol = data$Protocol
+summary(data$Protocol)
+freq(data$Protocol)
+```
+
+#MEQ
+The majority people are neither morning type nor night type, and their reaction time is slightly shorter than the other two kinds.
+```{r}
+MEQ = data$MEQ
+mean(data$MEQ, na.rm= T)
+plot(MEQ, reaction_time)
+summary(data$MEQ)
+par(mfrow = c(1,2))
+af$MEQ <- as.factor(af$MEQ)
+ggplot(summarise(group_by(af, MEQ), RT = mean(RT)),aes(x= MEQ, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = MEQ, fill = MEQ))
+summarise(group_by(af, illness), mean(RT))
+freq(data$MEQ)
+ggplot(data,aes(x = factor(MEQ),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by MEQ",
+       x = "MEQ",
+       y = "reaction time")
+```
+
+#Record
+Here is the boxplot of reaction time for 8 trials, the first four tests are from the first day, and the other four are from the second day people choose. There is a pattern that the middle two tests have shorter reaction time. 
+```{r}
+record = data$Record
+ggplot(data,aes(x = factor(record),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by record number",
+       x = "record number",
+       y = "reaction time")
+```
+
+

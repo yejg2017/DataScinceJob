@@ -1,0 +1,42 @@
+﻿Citation Request:
+  This dataset is public available for research. The details are described in [Moro et al., 2011]. 
+  Please include this citation if you plan to use this database:
+
+  [Moro et al., 2011] S. Moro, R. Laureano and P. Cortez. Using Data Mining for Bank Direct Marketing: An Application of the CRISP-DM Methodology. 
+  In P. Novais et al. (Eds.), Proceedings of the European Simulation and Modelling Conference - ESM'2011, pp. 117-121, Guimarães, Portugal, October, 2011. EUROSIS.
+
+  Available at: [pdf] http://hdl.handle.net/1822/14838
+                [bib] http://www3.dsi.uminho.pt/pcortez/bib/2011-esm-1.txt
+
+1. Title: Bank Marketing
+
+2. Sources
+   Created by: Paulo Cortez (Univ. Minho) and Sérgio Moro (ISCTE-IUL) @ 2012
+   
+3. Past Usage:
+
+  The full dataset was described and analyzed in:
+
+  S. Moro, R. Laureano and P. Cortez. Using Data Mining for Bank Direct Marketing: An Application of the CRISP-DM Methodology. 
+  In P. Novais et al. (Eds.), Proceedings of the European Simulation and Modelling Conference - ESM'2011, pp. 117-121, Guimarães, 
+  Portugal, October, 2011. EUROSIS.
+
+4. Relevant Information:
+
+   The data is related with direct marketing campaigns of a Portuguese banking institution. 
+   The marketing campaigns were based on phone calls. Your goal is to develop a model that predicts whether someone subscribes to a term deposit. 
+   Your manager has instructed you to focus on building a model that includes at least two firm controllable variables. 
+
+
+
+  5. Input variables:
+   # bank client data:
+   1 - age (numeric)
+   2 - education (categorical: "unknown","secondary","primary","tertiary")
+   3 - contact: contact communication type (categorical: "unknown","telephone","cellular") 
+   4 - month: last contact month of year (categorical: "jan", "feb", "mar", ..., "nov", "dec")
+   5 - campaign: number of contacts performed during this campaign for this client (numeric, includes last contact)
+   6 - poutcome: outcome of the previous marketing campaign (categorical: "failure","success")
+
+  Output variable (desired target):
+  17 - y - has the client subscribed a term deposit? (binary: "yes","no")

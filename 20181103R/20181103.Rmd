@@ -1,0 +1,203 @@
+---
+title: "Midterm Coursework"
+author: "RyanYip"
+output:
+  word_document: default
+  pdf_document: default
+  html_document: default
+---
+
+
+# Part 1
+
+### Dataset
+```{r,echo=FALSE}
+Democrat<-c(170, 448, 369, 182, 394, 206, 258, 433, 503, 426, 409, 421, 355, 516, 226, 535, 489,
+337, 464, 508, 325, 521, 533, 533, 237, 476, 312, 493, 411, 464, 192, 689, 398)
+
+Republicant<-c(377, 373, 284, 249, 402, 336, 377, 263, 352, 341, 290, 365, 416, 299, 334, 353, 363,346, 285, 371, 387, 333, 431, 349, 307, 294, 374, 254, 366, 416, 274, 343, 415)
+
+
+```
+
+
+## 1a  Descriptive statistics   
+
+```{r,echo=FALSE}
+sprintf("The Mean,Std Deviation of Democrat is :%f,%f",mean(Democrat),sd(Democrat))
+sprintf("The Mean,Std Deviation of Republicant is :%f,%f",mean(Republicant),sd(Republicant))
+```
+
+## 1b  Difference in means and confidence interval
+
+According to the data above,I can conclude that this is a mean hypothesis testing Problem for two independent samples.And we use t-test method for this problem.
+
+In statistics, we can define the corresponding null hypothesis (H0) as follow:
+
+* H0: Mean of  *Democrat* is equal Mean of  *Republicant* 
+
+* H1: Mean of *Democrat* is not equal Mean of *Republicant*
+
+And according to the t-test method,we will get the difference in means ,standard error of the difference in means and the  confidence intervals of the difference in means.
+```{r,echo=FALSE}
+Md=mean(Democrat)
+Mr=mean(Republicant)
+
+nd=length(Democrat)
+nr=length(Republicant)
+
+df=nr+nd-2
+
+S_square=(sum((Democrat-Md)^2)+sum((Republicant-Mr)^2))/(nd+nr-2)
+
+Mean_diff=Md-Mr
+std_mean_diff=sqrt(S_square/nd+S_square/nr)
+
+q_alpha_95=qt(1-0.05/2,df=df)
+q_alpha_99=qt(1-0.01/2,df=df)
+
+lower_95=Mean_diff-q_alpha_95*std_mean_diff
+upper_95=Mean_diff+q_alpha_95*std_mean_diff
+
+lower_99=Mean_diff-q_alpha_99*std_mean_diff
+upper_99=Mean_diff+q_alpha_99*std_mean_diff
+
+```
+Accoring the above analysis,we can know
+
+* The difference in means between *registered Democrats* and *registered Republicans* is `r Mean_diff`
+
+*  The standard error of the difference in means is `r std_mean_diff`
+
+*  The 95% confidence intervals of the difference in means is (`r lower_95`,`r upper_95`)
+
+*  The 99% confidence intervals of the difference in means is (`r lower_99`,`r upper_99`)
+
+
+## 1c  Summary
+According to the 1.b analysis,wo know that the difference  in means is in 95%  confidence intervals and 99% confidence intervals,which indicated that we reject the null hypothesis,that is the number of people who support *Democrat* and support *Republicant*  are not equal.
+
+And we will test which is more use the t-test again bellow.
+```{r}
+t.test(Democrat,Republicant,alternative = "greater",conf.level = 0.95)
+```
+Based on the result of t-test with alternative hypothesis(Democrat > Republicant),the p-value is less than 0.05,so reject the null hypothesis,that is,in statistics means,we have 95% confidence to believe that the Democrathas more support.
+
+
+#  Part 2
+
+###  Read Data
+```{r,echo=FALSE}
+pmdata <- read.csv("./pmgb2012_2014.csv",header = TRUE)
+pmdata<-na.omit(pmdata)  # remove NA value if has
+pmdata<-pmdata[!duplicated(pmdata),]  # remove duplicate data if has
+str(pmdata)
+```
+
+
+## 2a  Descriptive Statistics
+We will use the mean ,median,min and max to measure the  central tendency of variable,use the variance as measures of the dispersion following
+
+```{r,echo=FALSE}
+edu_level3<-pmdata$edu_level3
+edu_level4<-pmdata$edu_level4
+pop_density<-pmdata$pop_density
+
+describe<-function(variable,name){
+  Mean<-mean(variable)
+  Med<-median(variable)
+  Range<-range(variable)
+  std<-sd(variable)
+  
+  sprintf("The variable %s --- mean:%f,median:%f,min:%f,max:%f,std:%f",name,
+          Mean,Med,Range[1],Range[2],std)
+}
+
+
+describe(edu_level3,name="edu_level3")
+describe(edu_level4,name="edu_level4")
+describe(pop_density,name="pop_density")
+
+```
+
+
+```{r,echo=FALSE,eval=FALSE}
+plot(density(edu_level3),col='red',main="edu_level3")
+boxplot(edu_level3,main="edu_level3")
+plot(density(edu_level4),col='red',main="edu_level4")
+boxplot(edu_level4,main="edu_level4")
+
+prop.table(table(pop_density))
+boxplot(pop_density,main="pop_density")
+```
+According to the variable describe and the visualization,the variances in *edu_level3* and *edu_level4* is small,which mean distribution is relatively stable.And the mean and median are almost similiar,which indicate they both have central trendancy.In variable *pop_density*,we can the data mainly concentrate in 1 and 2,and the variance is relativey large.Above plot only show them in visualization.
+
+
+## 2b Visualization
+
+* 2b.1) Scatterplot
+```{r,echo=FALSE}
+plot(x=pmdata$edu_level4,y=pmdata$pmdeaths_total,xlab=" degree-level education",ylab ="premature mortality" )
+```
+
+According to the scatterplot,we can know that *degree-level education* has a negative linear correlation with *premature mortality*,which means that when *degree-level education*  increase,and premature mortality will decrease.And the correlation between they is `r cor(pmdata$edu_level4,pmdata$pmdeaths_total)`,which can comfirm this.
+
+*  box plot
+```{r,echo=FALSE}
+library(ggplot2)
+library(ggpubr)
+country=pmdata$country
+country=ifelse(country==1,"England",ifelse(country==2,"Scotland","Wales"))
+df=data.frame(pmdeaths_total=pmdata$pmdeaths_total,country=as.factor(country))
+
+ggplot(data=df,aes(x=country,y=pmdeaths_total,color=country))+geom_boxplot()+
+  stat_compare_means(comparisons =          list(c("England","Scotland"),c("England","Wales"),c("Scotland","Wales")),
+                    aes(label=..p.signif..))
+
+#boxplot(pmdeaths_total~country,data=df,x="country",ylab="pmdata_total")
+```
+The boxplot tells that the *premature mortality*  in Scotland is the most highest,and Wales secondly,the England is the most smallest.And difference in Eangland and Scotland,England and Wales is sigficant.
+
+
+## 2c Difference in Means
+```{r,echo=FALSE}
+mean_delta=mean(pmdata$pmdeaths_male)-mean(pmdata$pmdeaths_female)
+cat("The mean difference between premature mortality among men and women in Great Britain is :",mean_delta,"\n")
+
+
+cat("Conduct t-test: \n")
+t.test(pmdata$pmdeaths_male,pmdata$pmdeaths_female,conf.level = 0.95,alternative = "greater")
+```
+
+In the test,I use the alternative hypothesis is : male is greater than femele.According to the t-test result,we know that the p-value is smaller than 0.05,which means that we has 95% confidence to believe  thaht *premature mortality* among men and women in Great Britain is different in statistics.In fact ,it is consistent with commen sense,in many surveys, men¡¯s lives are indeed shorter than women¡¯s.
+
+
+## 2d  Linear Regression
+```{r,echo=FALSE}
+model<-lm(pmdeaths_total~mean_income,data = pmdata)
+summary(model)
+```
+Accoring to the model summary,the coefficient of *mean_income* is `r coefficients(model)[2]`,and the test is sinificant,which indicate that mean_income has a negative effect on *pmdeaths_total*,when  *mean_income* add one unit,*pmdeaths_total* will substract about 0.16 unit.And it is credible in statistics based on test.
+
+
+The coefficient of intercept is `r coefficients(model)[1]`,the significant test   for intercept indicates it is necessary to add in model.The coefficient of intercept tells us when the predictor(*mean_income*) is equal to zero,the *pmdeaths_total*  will be a constant,and is equal to `r coefficients(model)[1]`.
+
+
+The *R square* of mdoel is  about  0.23 ,it is a litte smaller in statistics,which  means that the predictor *mean_income* can explain 23% message in *pmdeaths_total*,and it represent the goodness of fit for model.So,only use *mean_income*  as predictor is not enough to explain the model I think.
+
+
+# Part 3
+
+## 3a Multiple Linear Regression
+
+ Accoring to the  findings of two linear regression models from table 1,we know that,in model 1 and model 2, they has common predictor *salary*.In model 1, the coefficient of *salary* is -0.56,p-value is 0.10,which means *salary* has negative effect on percentage of legislators.When salary add one unit,the *percentage of legislators* substract 0.56 unit.But this variable is not significant in model in statistics.As we know,the salary actually effect the *percentage of legislators* in substantive life,may be it is not consistent?.And in model 2 ,the coefficient of *salary* is -0.61,p-value is 0.13,the explaition is same as in model 1.
+ 
+In model 2 result,only *pct_union,pct_black,pct_urban* are significant,the estimated coefficient are relatively 0.12,-0.06,-0.03,which indicates that,when *pct_union* add one unit,*percentage of legislators* will add 0.12 unit;when *pct_black* add one unit,*percentage of legislators* will add -0.06 unit;when *pct_urban* add one,*percentage of legislators* will add -0.03.It is consistent that *percentage of workers* belonging to a labour union  has a positive  effect on *percentage of legislators* in real life;due to racial discrimination and the gap between rich and poor in real life, *percentage of state residents living in urban areas* and *percent of state residents living below the poverty line* actually have negative effect on *percentage of legislators*.All of these significant variable's hypothesis is established.
+
+
+The *R square* in model 1 is about 0.18,in model 2 is about 0.35,which mean that salary in model only can explain 18% message on  *percentage of legislators*.And a number of variables in model can explain 35% message on *percentage of legislators*.And model 2 has better goodness of fit of model than model 1.And I think model 2 can continue to improve and perform better,because in this model,still have many insinificant variale.
+
+
+
+
+

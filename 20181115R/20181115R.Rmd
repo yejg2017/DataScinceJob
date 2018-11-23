@@ -1,0 +1,106 @@
+---
+title: "BankHWfile-Summary"
+author: "RyanYip"
+date: "2018å¹<b4>11æœ<88>15æ—<a5>"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r,echo=FALSE,warning=FALSE}
+BankHWWfile<-read.csv("./BankHWfile.csv",header = TRUE)
+cat("There is :%d NA value",sum(is.na(BankHWWfile)),"\n")
+
+summary(BankHWWfile)
+```
+
+```{r,echo=FALSE,warning=FALSE}
+BankHWWfile$y<-as.factor(BankHWWfile$y)
+BankHWWfile$campaign<-as.factor(BankHWWfile$campaign)
+```
+
+### Question 1
+
+**Hypotheses 1:  variable education has significant effect on output variable y,that is**
+
+* H0:the coefficient of education is equal to 0 in logistic model
+
+* H1: the coefficient of education is not equal to 0 in logistic model
+
+
+
+**Hypotheses 2: variable age has significant effect on output variable y,that is**
+
+* H0:the coefficient of age is equal to 0 in logistic model
+
+* H1: the coefficient of age is not equal to 0 in logistic model
+
+
+I conducted the hypotheses test of age and education because, according to common sense, these two variables have a relatively large relationship with the dependent variable, so I am interested and want to see if there is any influence.And in reality,It is stange that *education* and *age* should have effect on whether has the client subscribed a term deposit.o I suggest that the company can pay more  attention to age and education level when considering customers,they mat be important message and  need to be consider further. 
+
+
+
+
+
+
+### Question 2
+#### preliminary analysis
+```{r,echo=FALSE,warning=FALSE}
+require(ggplot2)
+
+ggplot(data = BankHWWfile,aes(x=month,fill=y))+geom_bar()
+ggplot(data = BankHWWfile,aes(x=contact,fill=y))+geom_bar()
+ggplot(data = BankHWWfile,aes(x=education,fill=y))+geom_bar()
+```
+
+```{r,echo=FALSE,warning=FALSE}
+ggplot(data = BankHWWfile,aes(x=campaign,fill=y))+geom_bar()
+ggplot(data = BankHWWfile,aes(x=poutcome,fill=y))+geom_bar()
+```
+
+We make preliminary analysis on data by simple graph analysis,due to these variables are most categorical,so only do barplot.According to these plot,in *contact* variable,the numeber in  celluar type is the most,but number of not having the client subscribed a term deposit  also has big ratio;in *education*,the count in secondary is most.  ;and in telephone has the same result;In *month*,I think responce(y) has a differnce across month,and last contact in **May** is the highest;And in *campain*, the most is in low level number,but in high number,it is almost that  client has not subscribed a term deposit.In *poutcome*,it shows that when poutcome is fail,the more number of client has not subscribed a term deposit.
+
+
+### Question 3
+
+```{r,echo=FALSE,warning=FALSE,eval=FALSE}
+#model.full<-glm(y~contact+month+campaign+poutcome,data=BankHWWfile,family = "binomial")  # full model
+#model.reduce.month<-glm(y~contact+campaign+poutcome,data=BankHWWfile,family = "binomial")  # without month
+#model.reduce.poutcome<-glm(y~contact+campaign+month,data=BankHWWfile,family = "binomial")  # without poutcome
+#model.reduce.campaign<-glm(y~contact+month+poutcome,data=BankHWWfile,family = "binomial")  # without campaign
+
+```
+
+Corresponding to question 1,*age* and *education* are the two variables I want to test,So I control respectively.And I use all variables as predictor in full model.
+
+
+The follow model I do not consider the relationship across predictors.
+```{r,echo=TRUE,warning=FALSE}
+model.full<-glm(y~age+education+contact+month+campaign+poutcome,data=BankHWWfile,family = "binomial") # with age,edu
+
+model.reduce.edu<-glm(y~age+contact+month+campaign+poutcome,data=BankHWWfile,family = "binomial") # without edu
+model.reduce.age<-glm(y~education+contact+month+campaign+poutcome,data = BankHWWfile,family = "binomial") #without age
+#summary(model.full)
+```
+
+
+### Question 4
+
+Interpret the output of model in Question 3
+
+
+```{r,echo=FALSE,warning=FALSE}
+anova(model.full,model.reduce.edu, test="LRT")
+```
+Accoring to the anova tables,we know that the p-value is larger than 0.05,that is,the **Hypotheses 1** is not significant,so we can not reject the H0,that is,variable *education* should not be in model,which means *education* has few effect on response variable *y*.
+
+
+```{r,echo=FALSE,warning=FALSE}
+anova(model.full,model.reduce.age,test="LRT")
+```
+
+
+
+The result of age is similiar with education,the p-value is also larger than 0.05,so it is not significant and variable *age* should not be in model,which means *age* has few effect on response variable *y*.
+
+According to the above result,they do not support my Hypotheses in statistics,which is not consistent with common sense?,may be I should take them into further consideration and consider other factors.

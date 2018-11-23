@@ -1,0 +1,505 @@
+---
+title: "490rt"
+author: "RyanYip"
+date: "2018å¹<b4>11æœ<88>1æ—<a5>"
+output:
+  word_document: default
+  html_document: default
+---
+
+```{r}
+library(ggplot2)
+library(dplyr)
+library(funModeling)
+library(Hmisc)
+```
+
+
+# Load data
+```{r}
+data = read.csv("./rt.csv",header = TRUE)
+basic_eda <- function(data)
+{
+  glimpse(data)
+  df_status(data)
+  freq(data) 
+  profiling_num(data)
+  plot_num(data)
+  describe(data)
+}
+```
+
+# Data preprocess
+```{r}
+summary(data)
+```
+According to the summary of data,it exists NA value.It is a point need to handle.
+```{r}
+sprintf("Total NA value is :%d",sum(is.na(data)),"\n")
+apply(data,2,function(x){return(sum(is.na(x)))})  # Na  in each varible
+data=na.omit(data)
+```
+The method processing  the NA value I used is removing the data only.
+
+
+# Variable explore
+   According to common sense, the  sleep ,stimulant,Fatigue ,Hunger,nusyOrnight(0 to represent light day and 1 for busy day),illness,Protocol and  MEQ has a great influence on people's reaction time.So It is necessary to explore these variable and based on  these message from the explore,it is helpful for us to do next anlysis and create model.
+   Explore method mainly includes scatter plot, boxplot, barplot, as well as frequency plot to explore variable in data. 
+
+##  1. Sleep
+```{r,warning=FALSE}
+amount_of_sleep = data$Sleep
+reaction_time = data$RT
+sprintf("the mean of sleep:%f",mean(data$Sleep, na.rm= T))
+summary(data$Sleep)
+
+par(mfrow = c(1,2))
+boxplot((data$Sleep), ylab = "Amount of Sleep")
+plot(amount_of_sleep, reaction_time,main = paste0("Sleep vs reaction time\n","correlation:",cor(amount_of_sleep,reaction_time)))
+```
+The Boxplot of sleep tells us that,sleep  distributes centerly around 8 hours,it has few outliers and ignore them.The plot of sleep vs reaction time ,is is strange that they have lower correlation and plot  tell us the same reslut.According these graph,I probably  know the sleep distribution and correlation with RT.
+
+```{r}
+af <- na.omit(data)
+af$Sleep <- as.factor(af$Sleep)
+ggplot(summarise(group_by(af, Sleep), RT = mean(RT)),aes(x= Sleep, y = RT)) + geom_bar(stat = "identity", position = position_stack())
+```
+The above plot is Barplot group by sleep on mean value.We can know that the mean of sleep  distributes evenly on each time point,But around 7.3 is highest.It is consistent with previous plot.
+
+
+
+```{r}
+summarise(group_by(af, Sleep), mean(RT))
+freq(data$Sleep)
+```
+The graph show the mean and frequency of each sleep time,** freq function ** is only visual on ** suammrise **,what they tell us is the same.They both tells us that 8 hour sleep has the biggest proportion in total sleep,which is consistent with boxplot.
+
+
+## 2.stimulant
+For stimulant variable, I have the two-side boxplot to compare the mean reaction time value. I did not take out the missing data because they are not useless in this case. I treat them like a reference group. And in frequency plot, it is obvious that most of the people did not use stimulant during the test.
+
+```{r}
+#stimulant = data$Stimulant
+ggplot(data,aes(x = factor(Stimulate),y = RT)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by stimulant",
+       x = "stimulant",
+       y = "reaction time")
+
+
+af$Stimulant <- as.factor(af$Stimulate)
+ggplot(summarise(group_by(af, Stimulant), RT = mean(RT)),aes(x= Stimulant, y = RT)) + geom_bar(stat = "identity", position = position_stack(),aes(color = Stimulant, fill = Stimulant))
+```
+The Boxplot  and Barplot both tell us that,the reaction time on using  or not using stimulant is almost the same,they have the almost same effect .
+
+```{r}
+summarise(group_by(af, Stimulant), mean(RT))
+freq(af$Stimulate)
+```
+In frequency plot, it is obvious that most of the people did not use stimulant during the test,the proportion of not use stimulant is abount ** 89% **,we can learn the distrubution of this variable
+
+
+## 3.Fatigue
+
+```{r}
+fatigue_scale = data$Fatigue
+sprintf("the mean of fatigue:%f",mean(data$Fatigue, na.rm= T))
+summary(data$Fatigue)
+
+plot(fatigue_scale, reaction_time,main=paste0("fatigue vs reaction \n","corr:",cor(fatigue_scale,reaction_time)))
+```
+The plot show the distribution of fatigue with reaction time.They have not apparent relationship what the plo show,and the correlation between them is only 0.21,it is low.Summary function just tells us the summary of this variable .
+
+```{r}
+af$Sleep <- as.factor(af$Fatigue)
+ggplot(summarise(group_by(af, Fatigue), RT = mean(RT)),aes(x= Fatigue, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Fatigue, fill = Fatigue))
+ggplot(data,aes(x = factor(fatigue_scale),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by fatigue",
+       x = "fatigue",
+       y = "reaction time")
+```
+What the message we get from the barplot and boxplot are same.According to above  graph,the reaction time is highest when fatigue is 7,and is has a growth trend when fatigue increase,which indicates reacte more slow.It is important.
+
+```{r}
+summarise(group_by(af, Fatigue), mean(RT))
+freq(data$Fatigue)
+```
+
+what the summary of mean RT  group by fatigue show  is same as the barplot and boxplot.Accordint to the frequency plot,the proportion on fatigue=3 is highest,about 29%.And the proportion between them is not uniform,it has diiference.
+
+
+## 4.Hunger
+```{r}
+hunger_scale = data$Hunger
+sprintf("the mean of hunger:%f",mean(data$Hunger, na.rm= T))
+summary(data$Hunger)
+plot(hunger_scale, reaction_time,main=paste0("hunger vs reaction \n","corr:",cor(hunger_scale,reaction_time)))
+```
+The plot between hunger and reaction time shows,reaction time change apparently when hunger change,and the corrlation is also lower.It presents that most of the people test their reaction time near a hunger level of 4. When hunger level reaches 6, it is more likely that the person would have the fastest reaction speed.
+
+
+
+```{r}
+
+af$Hunger <- as.factor(af$Hunger)
+af$Record<-as.factor(af$Record)
+ggplot(summarise(group_by(af, Hunger), RT = mean(RT)),aes(x= Hunger, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Hunger, fill = Hunger))
+
+ggplot(data,aes(x = factor(hunger_scale),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by hunger",
+       x = "hunger",
+       y = "reaction time")
+```
+The boxplot and barplot  show  reaction-time's trend  on each mean of hunger is gentle,and when hunger=1,reaction time is the most highest.
+
+
+```{r}
+summarise(group_by(af, Hunger), mean(RT))
+freq(data$Hunger)
+```
+Frequency plot shows us that,the proportion of hunger=4 and hunger=5 is almost 50%,and hunger=4 is the most hightest.hunger=2 is 0.38%,it is almost equal to zero.so Hunger distibutes imbalance.
+
+
+## 5.busyOrlight
+I used number 0 to represent light day and 1 for busy day. According to the plots below, it is easy to find that normally people react faster in light days.
+
+
+```{r}
+day_type = data$busyOrlight
+af$Type <- as.factor(af$busyOrlight)
+ggplot(summarise(group_by(af, Type), RT = mean(RT)),aes(x= Type, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = Type, fill = Type))
+
+
+ggplot(data,aes(x = factor(day_type),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by day type",
+       x = "type",
+       y = "reaction time")
+```
+Barplot and boxplot tell us that,reaction time is smaller in light day,which indicates busy to reduce the reaction.It is consistent with common sense.
+
+
+```{r}
+summarise(group_by(af, Type), mean(RT))
+freq(data$busyOrlight)
+```
+
+The sample proportion of light day and busy data in data is almost the same,about 50%,it distribute uniformally.
+
+
+
+## 6.illness
+illness=1,represnet normal,illness=0,represent sick.
+
+```{r}
+af$illness <- as.factor(af$illness)
+ggplot(summarise(group_by(af, illness), RT = mean(RT)),aes(x= illness, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = illness, fill = illness))
+
+
+ggplot(data,aes(x = factor(illness),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by illness",
+       x = "illness",
+       y = "reaction time")
+```
+Accordind to the barplot and boxplot,the reaction time on illness=1 is lower than illness=0,the mean between them is the same,which also say,when people are sick ,they reacte slowly,it is consistent with common sense.
+
+```{r}
+summarise(group_by(af, illness), mean(RT))
+freq(data$illness)
+```
+
+The sample proportion of illness=1 is almostly 91%,it tell us that the sample record is not inbalanced .It may be effect the 
+survey?
+
+
+
+
+## 7.Protocol
+Most of the people record themself following the protocol when testing reaction time.(protocal=1,represent comply with)
+```{r}
+protocol = data$Protocol
+summary(data$Protocol)
+freq(data$Protocol)
+```
+
+Accorind to the summary of protocol and frequency plot,the sample proportion of protolcol=1 is almost 92%,and the missing record
+is about 6%, and unclear record has each one.These indicates that this protocol reocord is not good enough.It need to be processed with other method remove  it directly.
+
+
+## 8.MEQ
+(night:-1  normal:0   morning:1)
+
+
+```{r}
+af$MEQ <- as.factor(af$MEQ)
+ggplot(summarise(group_by(af, MEQ), RT = mean(RT)),aes(x= MEQ, y = RT)) + geom_bar(stat = "identity", position = position_stack(), aes(color = MEQ, fill = MEQ))
+
+
+ggplot(data,aes(x = factor(MEQ),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by MEQ",
+       x = "MEQ",
+       y = "reaction time")
+```
+Above plot show that, reaction on night(MEQ=-1) time is slightly shorter than the other two kinds.Normal(MEQ=1) is the most highest.
+
+
+```{r}
+summarise(group_by(af, illness), mean(RT))
+freq(data$MEQ)
+```
+
+
+
+## 9.Record
+```{r}
+record = data$Record
+ggplot(data,aes(x = factor(record),y = reaction_time)) +
+  theme_classic()  +
+  geom_boxplot() +
+  labs(title = "Boxplot of reaction time by record number",
+       x = "record number",
+       y = "reaction time")
+```
+
+Here is the boxplot of reaction time for 8 trials, the first four tests are from the first day, and the other four are from the second day people choose. There is a pattern that the middle two tests have shorter reaction time. And the mean reaction time accross them some differ slightly.It is interesting for us.
+
+
+# Explore reaction time pattern,fit mixed model
+This step,we will use the variable which are explored in the first step to fit the mixed model.It is also a process of exploration for reaction time pattern.Try to find the best mixed model bellow.
+
+```{r}
+library(nlme)
+library(lme4)
+```
+
+As previously explored, variable Protocol  has a lot of unclear record,and here,I handle it:
+
+*  unknow record-> 2
+*  ?0->0
+*  ?1->1
+```{r}
+protocol=as.character(af$Protocol)
+protocol=ifelse(protocol=="",2,ifelse(protocol=="?0",0,ifelse(protocol=="?1",1,ifelse(protocol=="0",0,1))))
+af$Protocol=as.factor(as.integer(protocol))
+#af$ID=as.factor(af$ID)
+af$Fatigue=as.factor(af$Fatigue)
+predictor=c("ID","Record","Stimulant","Fatigue","Hunger","Type","illness","Sleep","MEQ","Protocol")
+```
+
+
+## step 1) Fit All model
+Use "ID,Record","Stimulant","Fatigue","Hunger","Type","illness","Sleep","MEQ","Protocol" as fixed predictor,the "Record" and "ID" as random effect variable.
+
+### Fit full models
+
+We know that ,ID means sample,and the record is repeat observation many times in each ID,So record is random effect.
+```{r,warning=FALSE}
+model.full=lmer(RT~Stimulant+Fatigue+Hunger+Type+illness+Sleep+MEQ+Protocol+(1|Record)+(1|ID),data = af,method="ML") #fit a linear model with a varying-intercept group effect using the variable Record.
+```
+
+```{r}
+AIC(model.full)
+anova(model.full)
+```
+
+### Variable selection
+
+Consider the collinearity across predictors is the main reason effect the model,so variable selection is neccessary,and it is a way to avoid this problem. 
+
+when applying this function to my reduced model, I got vif values for each of the variables. When vif>5 for a predictor, it probably should be removed. In case multiple variables have a vif>5, I first remove the predictor with the highest vif, then re-run lmer en vif.mer. I remove again the predictor with highest vif (if one or more predictors have still a vif>5), and I repeat this until none of the remaining predictors has a vif>5.
+
+```{r}
+vif.mer <- function (fit) {
+    ## adapted from rms::vif
+    
+    v <- vcov(fit)
+    nam <- names(fixef(fit))
+
+    ## exclude intercepts
+    ns <- sum(1 * (nam == "Intercept" | nam == "(Intercept)"))
+    if (ns > 0) {
+        v <- v[-(1:ns), -(1:ns), drop = FALSE]
+        nam <- nam[-(1:ns)]
+    }
+    
+    d <- diag(v)^0.5
+    v <- diag(solve(v/(d %o% d)))
+    names(v) <- nam
+    v
+}
+
+kappa.mer <- function (fit,
+                       scale = TRUE, center = FALSE,
+                       add.intercept = TRUE,
+                       exact = FALSE) {
+    X <- fit@pp$X
+    nam <- names(fixef(fit))
+    
+    ## exclude intercepts
+    nrp <- sum(1 * (nam == "(Intercept)"))
+    if (nrp > 0) {
+        X <- X[, -(1:nrp), drop = FALSE]
+        nam <- nam[-(1:nrp)]
+    }
+
+    if (add.intercept) {
+        X <- cbind(rep(1), scale(X, scale = scale, center = center))
+        kappa(X, exact = exact)
+    } else {
+        kappa(scale(X, scale = scale, center = scale), exact = exact)
+    }
+}
+
+colldiag.mer <- function (fit,
+                          scale = TRUE, center = FALSE,
+                          add.intercept = TRUE) {
+    ## adapted from perturb::colldiag, method in Belsley, Kuh, and
+    ## Welsch (1980).  look for a high condition index (> 30) with
+    ## more than one high variance propotion.  see ?colldiag for more
+    ## tips.
+    result <- NULL
+    if (center) 
+        add.intercept <- FALSE
+    if (is.matrix(fit) || is.data.frame(fit)) {
+        X <- as.matrix(fit)
+        nms <- colnames(fit)
+    }
+    else if (class(fit) == "mer") {
+        nms <- names(fixef(fit))
+        X <- fit@X
+        if (any(grepl("(Intercept)", nms))) {
+            add.intercept <- FALSE
+        }
+    }
+    X <- X[!is.na(apply(X, 1, all)), ]
+
+    if (add.intercept) {
+        X <- cbind(1, X)
+        colnames(X)[1] <- "(Intercept)"
+    }
+    X <- scale(X, scale = scale, center = center)
+
+    svdX <- svd(X)
+    svdX$d
+    condindx <- max(svdX$d)/svdX$d
+    dim(condindx) <- c(length(condindx), 1)
+
+    Phi = svdX$v %*% diag(1/svdX$d)
+    Phi <- t(Phi^2)
+    pi <- prop.table(Phi, 2)
+    colnames(condindx) <- "cond.index"
+    if (!is.null(nms)) {
+        rownames(condindx) <- nms
+        colnames(pi) <- nms
+        rownames(pi) <- nms
+    } else {
+        rownames(condindx) <- 1:length(condindx)
+        colnames(pi) <- 1:ncol(pi)
+        rownames(pi) <- 1:nrow(pi)
+    }         
+
+    result <- data.frame(cbind(condindx, pi))
+    zapsmall(result)
+}
+
+maxcorr.mer <- function (fit,
+                         exclude.intercept = TRUE) {
+    so <- summary(fit)
+    corF <- so@vcov@factors$correlation
+    nam <- names(fixef(fit))
+
+    ## exclude intercepts
+    ns <- sum(1 * (nam == "Intercept" | nam == "(Intercept)"))
+    if (ns > 0 & exclude.intercept) {
+        corF <- corF[-(1:ns), -(1:ns), drop = FALSE]
+        nam <- nam[-(1:ns)]
+    }
+    corF[!lower.tri(corF)] <- 0
+    maxCor <- max(corF)
+    minCor <- min(corF)
+    if (abs(maxCor) > abs(minCor)) {
+        zapsmall(maxCor)
+    } else {
+        zapsmall(minCor)
+    }
+}
+```
+
+
+### Step 1
+* run vif.mer function  for full model,remove the variable if this variable's vif >5.0
+```{r}
+vif.step.1=vif.mer(model.full)
+names(vif.step.1)[which(vif.step.1>5.0)]
+```
+ According the result got from step vif process,consider remove variable protocol and Hunger from full model,and re-run new mixwd model
+ 
+### Step 2
+* re-run model from Step,remove Protocol and Hunger
+```{r,warning=FALSE}
+model.reduce.1=lmer(RT~Stimulant+Fatigue+Type+illness+Sleep+MEQ+Protocol+(1|Record)+(1| ID),data = af,method="ML")
+```
+
+
+### Step 3
+* run vif.mer function  for full model,remove the variable if this variable's vif >5.0 from step 2
+```{r}
+vif.step.2=vif.mer(model.reduce.1)
+names(vif.step.2)[which(vif.step.2>5.0)]
+```
+In  the Step 3,run vif process,and the result tell us that,there is not variable's vif >5.0,so we stop re-run model and do not remove any variable from model got from step 2,it is the final model.
+
+
+#### Plot resudual vs fiited value
+```{r}
+par(mfrow=c(1,2))
+plot(fitted(model.full), residuals(model.full), xlab = "Fitted Values", ylab = "Residuals",main="full model")
+abline(h = 0, lty = 2)
+lines(smooth.spline(fitted(model.full), residuals(model.full)),col="red")
+
+
+
+plot(fitted(model.reduce.1), residuals(model.reduce.1), xlab = "Fitted Values", ylab = "Residuals",main="reduce(final) model")
+abline(h = 0, lty = 2)
+lines(smooth.spline(fitted(model.reduce.1), residuals(model.reduce.1)),col="red")
+```
+The two graph of fiited value vs residual  is similair,ans residual is almost around 0,which indicates the two model perform similialy and perform not  bad.
+
+#### Compare reduce model and full model
+```{r}
+logLik(model.full)
+logLik(model.reduce.1)
+
+sprintf("The R square of full model is :%f",cor(af$RT,fitted(model.full))^2)
+sprintf("The R square of reduce  model is :%f",cor(af$RT,fitted(model.reduce.1))^2)
+```
+The likelihood of full model is `r as.numeric(logLik(model.full))`,and reduce model is `r as.numeric(logLik(model.reduce.1)) `.,
+the higher likelihood value ,the better model.And the R square of them has almost no difference,but reeduce model has few coefficients.
+
+## Explain the model
+```{r}
+print(lme4::fixef(model.reduce.1))  # print fixed effect coefficients
+```
+
+According to the data,wo know that
+
+* Stimulant: Stimulant=1 means use stimulate,and 0 means do not use.
+* Fatigue :The higher the value, the higher degree of fatigue
+* Type(busy or ligtht): Type=1,mean busy,0 mean light
+* illness: 0 mean health,1 mean sick
+* MEQ: 0 mean normal,1 mean morning
+* Protocol: 0:not comply,1:comply,2:unknow
+
+Accoring to the fiexed effect and random effect coefficients of print,the coefficient of Stimulant=1 is negative,which mean when using  stimulate has negative effect on reaction,will reacte slowly;When Fatigue vary from 2 to 7,cofficient is from small to large,which mean more fatigue,reacte fastser,I think it is consistent with what we know(common sense);The coefficient of Type=1 is positive,which mean busy is helpful to reacte quickly.When sick( coef of illness=1 is negative),reaction time will become longer.moring questionnare will reacte faster.And when comply with protocol,is has positive effect on reaction time,which mean will reacte faster,otherwise.
+
+In a word,the variable I seleced in the final model is reasonable,and they actualli can explain model well.So I use the reduce model as final model.

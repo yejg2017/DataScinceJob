@@ -1,0 +1,300 @@
+---
+title: "Data Analysis and Linear Models Homework 7"
+output:
+  word_document: default
+  html_document: default
+---
+
+### 8.6
+```{r,echo=FALSE,warning=FALSE}
+Steroid<-read.table("./Data/CH08PR06.txt",header = FALSE,col.names = c("Y","X"))
+summary(Steroid)
+
+#Steroid$X<-scale(Steroid$X)
+```
+
+#### a)Fit regression model(8.2)
+```{r,echo=FALSE,warning=FALSE}
+model.1<-lm(Y~X+I(X^2),data = Steroid)
+R.square<-summary(model.1)$r.squared
+plot(Steroid$X,Steroid$Y,xlab = "X",ylab = "value",pch=1,col="blue",main = sprintf("R Square of model is :%f",R.square))
+points(Steroid$X,fitted(model.1),pch=2,col="red")
+legend(x=17,y=12,legend = c("origin","fitted"),col = c("blue","red"),pch = c(1,2))
+```
+
+```{r,warning=FALSE,echo=FALSE}
+plot(Steroid$X,residuals(model.1),xlab = "X",ylab = "residuals")
+abline(h = 0,col="red")
+
+model.2<-lm(Y~1,data = Steroid)
+anova(model.2,model.1)
+```
+
+The plots *residuals* against linear predictor *X* show us that,The residual is evenly distributed around 0.And the F test of good of fitness in the variable table,the *p-value* is smaller than 0.05,which indicates that the full model is accepted,that is this model is work well;and R Square of the *model.1* is `r R.square`.Based on the two result,which indicats that this model fits well,that is,it is a good fit.
+
+
+#### b)
+To test wether or not there is a regression realation,that is to test the coefficient of quadratic interm is 0:
+
+* H0:  beta2 is 0
+* H1:  beta2 is not 0
+
+```{r,warning=FALSE,echo=FALSE}
+model.2<-lm(Y~X,data = Steroid)
+SSE.1<-sum(residuals(model.1)^2)
+SSE.2<-sum(residuals(model.2)^2)
+df1<-model.1$df.residual
+df2<-model.2$df.residual
+
+F.value<-(SSE.2-SSE.1)/(df2-df1)/(SSE.1/df1)
+#F.comp<-qf(p = 0.99,df1 = df2-df1,df2 = df1)
+sprintf("The computed F value is :%f",F.value)
+p.value<-1.0-pf(q = F.value,df1 = df2-df1,df2=df1)
+sprintf("The computed p value is :%f",p.value)
+```
+
+According to the test above,we know that,the *p-value* is smaller than 0.01,so,we can conclude that,we have 99% confidence to reject the null hypothesis,that is ,the coefficient of quadratic item is not equal to 0.
+
+
+#### c) 
+
+```{r,echo=FALSE,warning=FALSE}
+n=dim(Steroid)[1]
+SSTO<-sum((Steroid$X-mean(Steroid$X))^2)
+alpha.t<-qt(p =1-0.01/2,df = df1)
+
+
+response.interval.conf<-function(X,alpha=0.01){
+  pred<-predict(model.1,data.frame(X=X))
+  Std.pred<-sqrt(SSE.1/df1*(1/n+(X-mean(Steroid$X))^2/SSTO))
+  return(Std.pred)
+}
+
+```
+
+
+* Confidence intervals(CI)
+```{r,warning=FALSE,echo=FALSE}
+pred10<-predict(model.1,data.frame(X=10))
+Std.pred10<-response.interval.conf(X=10,alpha = 0.01)
+
+pred15<-predict(model.1,data.frame(X=15))
+Std.pred15<-response.interval.conf(X=15,alpha = 0.01)
+
+pred20<-predict(model.1,data.frame(X=20))
+Std.pred20<-response.interval.conf(X=20,alpha = 0.01)
+
+g=3
+B<-qt(1-0.01/2/g,df1)
+
+lower10<-pred10-B*Std.pred10;upper10<-pred10+B*Std.pred10  # X=10
+
+lower15<-pred15-B*Std.pred15;upper15<-pred15+B*Std.pred15 # X=15
+
+lower20<-pred20-B*Std.pred20;upper20<-pred20+B*Std.pred20  #X=20
+```
+
+Use the *Bonferroni Method*,We can get the confidence interval respetively when age=10,15,20,and the confidence intevel at 99 percenpt is (`r lower10`,`r upper10`),(`r lower15`,`r upper15`),(`r lower20`,`r upper20`) 
+
+
+
+#### d)
+```{r,echo=FALSE,warning=FALSE}
+pred15<-predict(model.1,data.frame(X=15))
+Std.pred<-sqrt(SSE.1/df1*(1/n+(15-mean(Steroid$X))^2/SSTO+1))
+lower<-pred15-alpha.t*Std.pred
+upper<-pred15+alpha.t*Std.pred
+```
+
+The prediction of model when age=15 is `r pred15`,and the 99% confidence of the prediction intervals is (`r lower`,`r upper`)
+
+
+#### e)
+To test whether the quadratic term can be dropped,that is ,the cofficient of the quadratic term is equal  0,that is
+
+* H0:  beta2 is 0
+* H1:  beta2 is not 0
+
+And we have done this job in answer a,we know tha p-value  of the test is `r p.value`,which is smaller than 0.01,so we conclude that,quadratic term can not be dropped in the model.
+
+#### f)
+```{r,warning=FALSE,echo=FALSE}
+coffs<-coefficients(model.1)
+summary(model.1)
+```
+According to the model,the cofficients of *Intercept* is `r coffs[1]`,cofficients of *X* is `r coffs[2]`,cofficients of *X^2* is `r coffs[3]`,
+
+so the fitted funtion is :Y=`r coffs[1]`\*Intercept+`r coffs[2]`]\*X+`r coffs[3]`\*X^2
+
+
+### 8.21
+According to what the topic mean,the linear regression equation is 
+
+* Y=b0+b1\*X1+b2\*X2+b3\*X3+bias
+
+#### a)
+
+Develop the response function for each type of protection category:
+
+* When X2=1,X3=0,that is when type of protection is *Hard hat*, and Y=b0+b1\*X1+b2
+
+* When X2=0,X3=1,taht is when type of protection is *Bump cap*,and Y=b0+b1\*X1+b3
+
+* When X2=0,X3=0,that is when type of protection is *None*,and Y=b0+b1\*X1
+
+#### b)
+
+For each of following questions,the alternatives H0 and H1 for the appropriate is :
+
+##### (1)
+
+* H0: b2 is equal to 0
+
+* H1: b2 is smaller than 0
+
+##### (2)
+
+* H0: b2 is equal to b3
+
+* H1: b2 is not equal to b3
+
+
+### 8.23
+I do not agree with the interpretaion with result.Of course,accoding to the test in the result show for us,it just only tells *Winter* has no influence on sale except other interaction with other season.It is only true in this test.Hower,in other test,eg
+B2=0 or B3=0 or B0=0,they are ignored and not to be condidered in the topic.Besides,and interaction are also not be considered I think.So,I think the interpretion is biased.
+
+
+
+### 8.34
+
+#### a)
+
+First-order linear regression model is :
+
+* Y=b0+b1\*X1+b2\*X2+b3\*X3+bias
+
+#### b)
+
+The response functions for the three types of banks:
+
+* When X2=1,X3=0,that is when type of bank is *Commercial*,Y=b0+b1\*X1+b2
+
+* When X2=0,X3=1,that is when type of bank is *Mutual saving*,Y=b0+b1\*X1+b3
+
+* When X2=-1,X3=-1,that is when type of bank is *Saving and loan*,Y=b0+b1\*X1-b2-b3
+
+
+#### c)
+
+##### (1)
+
+* **b2** means if controlling for X1,when type of bank is *Commercial*,the constant term will increase by **b2** units 
+
+##### (2)
+
+* **b3** means if controlling for X1,when type of bank is *Mutual saving*,the constant term will increase by **b3** units 
+
+
+##### (3)
+
+* **-b2-b3** means if controlling for X1,when type of bank is *Saving and loan* ,the constant term will increase by **-b2-b3** units 
+
+
+
+
+
+### 8.39
+```{r,warning=FALSE,echo=FALSE}
+CDI<-read.table("./Data/APPENC02.txt",header = FALSE)
+colnames(CDI)<-c("Identification.number","County","State","Land.area","Total.population",
+                 "Percent.of.population18_34","Percent.of.population65","Num.active.physicians",
+                 "Num.hospital.beds","Total.serious.crimes","Percent.high","Percent.bachelor",
+                 "Percent.below","Percent.unemploy","Per.capita.income","Total.personal.income",
+                 "Geographic.region")
+
+CDI.Sub<-data.frame(Y=CDI$Num.active.physicians,
+                    X1=CDI$Total.population,
+                    X2=CDI$Total.personal.income,
+                    X3=ifelse(CDI$Geographic.region==1,1,0),
+                    X4=ifelse(CDI$Geographic.region==2,1,0),
+                    X5=ifelse(CDI$Geographic.region==3,1,0))
+str(CDI)
+```
+
+#### a) Fit the model
+```{r,warning=FALSE,echo=FALSE}
+model.CDI.Sub<-lm(Y~X1+X2+X3+X4+X5,data = CDI.Sub)
+summary(model.CDI.Sub)
+```
+
+#### b)
+
+Accordint to the model above ,we can get the model Y=b0+b1\*X1 + b2\*X2 +b3\*X3+b4\*X4+b5\*X5,
+and the cofficients we can also get from the model fitted.
+
+All the premise is if X1 if fixed:
+
+* When X3=1,X4=0,X5=0,and Y=b0+b1\*X1+b2\*X2+b3
+* When X3=0,X4=1,X5=0,and Y=b0+b1\*X1+b2\*X2+b4
+* When X3=0,X4=0,X5=1,and Y=b0+b1\*X1+b2\*X2+b5
+
+So,**b3-b4** is equal to the difference between north eastern region and north central region.
+
+To examine whether the effect is different ,that is to
+
+* H0: b3-b4 is equal to 0
+* H1: b3-b4 is not equal 0
+
+
+```{r,warning=FALSE,echo=FALSE}
+n=dim(CDI.Sub)[1]
+p=6
+MSE=sum(residuals(model.CDI.Sub)^2)/(n-p)
+
+X=as.matrix(cbind(data.frame(X0=rep(1,n)),CDI.Sub[,-1]))
+var.hat.matrix<-MSE*solve((t(X)%*%X))
+
+coeffs<-coefficients(model.CDI.Sub)
+b3_hat<-coeffs["X3"]
+b4_hat<-coeffs["X4"]
+
+Std.x34<-sqrt(var.hat.matrix["X3","X3"]+var.hat.matrix["X4","X4"]-2*var.hat.matrix["X3","X4"])
+
+t.computed.value<-(b3_hat-b4_hat)/Std.x34
+p.value<-1-pt(q = t.computed.value,df = n-p)
+
+lower<-(b3_hat-b4_hat)-qt(p=0.95,df=n-p)*Std.x34
+upper<-(b3_hat-b4_hat)+qt(p=0.95,df=n-p)*Std.x34
+
+sprintf("The p-value of the test is : %f",p.value)
+sprintf("The 10 percent confidence interval is :(%f,%f)",lower,upper)
+```
+
+Accordint to the result ,we know that the *p-value* is `r p.value`,which is smaller than 0.05,so  we can not reject the null hypothesis,that is,*NC* and *NE* have no different effect on *actiave physicians*
+
+
+#### c)
+
+To test whether any geograph effects are present ,that is to test b3=b4=b5=0;we can get
+
+* H0: b3,b4,b5 are all equal to 0
+* H1: b3,b5,b5 are nor all equal to 0
+
+```{r,warning=FALSE,echo=FALSE}
+model.full<-lm(Y~X1+X2+X3+X4+X5,data = CDI.Sub)
+model.reduce<-lm(Y~X1+X2,data = CDI.Sub)
+
+df1<-model.full$df.residual
+df2<-model.reduce$df.residual
+SSE.F<-sum(residuals(model.full)^2)
+SSE.R<-sum(residuals(model.reduce)^2)
+
+n<-dim(CDI.Sub)[1]
+p<-3
+F.value<-(SSE.R-SSE.F)/(df2-df1)/(SSE.F/df1)  # use anova function can get directly
+p.value<-1-pf(q = F.value,df1 = df2-df1,df2 = df1)
+
+sprintf("The p-value of test is %f",p.value)
+```
+
+According to the result above,the *p-value* is `r p.value`,which is smaller than 0.10.So,at alpha=0.10 level,we can not reject the null hypothesis,that no geographic efffects are presnet.  
