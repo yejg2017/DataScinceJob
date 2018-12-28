@@ -1,0 +1,473 @@
+---
+title: "Data Analysis and Linear Models Homework 8"
+output:
+  word_document: default
+  html_document: default
+---
+
+### 1.Introduction
+
+  This project is about that using the data of residential sales that occurred during the year 2002 were available from a city in the midwest to bulid a  model to predict the sales price.These demographic variable include sales price, style, finished square feet, number of bedrooms, whether the house has a pool, lot size, year built, whether air conditioning is installed and whether or not the lot is adjacent to a highway.
+
+```{r,warning=FALSE,echo=FALSE}
+# Load data
+sales<-read.table("./APPENC07.txt",header = FALSE)
+variables<-c("Id.Number","Sales.Price","Square.Feet",
+             "Number.bedrooms","Number.Bathrooms","Air.Condition",
+             "Garage.Size","Pool","Year.Built","Quality",
+             "Style","Lot.Size","Adjacent.to.Highway")
+colnames(sales)<-variables
+sales$Air.Condition<-as.factor(sales$Air.Condition)
+sales$Pool<-as.factor(sales$Pool)
+sales$Quality<-as.factor(sales$Quality)
+sales$Style<-as.factor(sales$Style)
+sales$Adjacent.to.Highway<-as.factor(sales$Adjacent.to.Highway)
+str(sales)
+sales<-sales[,-1]
+```
+
+
+#### 2.Exploratory data analysis
+#### (a)
+
+The R function *str* can tell us that ,only 
+*Sales.Price,Square.Feet,Number.bedrooms,Number.Batchrooms,Garage.Size,Lot.Size* are quantitative variables.
+
+```{r,warning=FALSE,echo=FALSE}
+# scatterplot matrix
+pairs(sales[,c("Sales.Price","Square.Feet","Number.bedrooms","Number.Bathrooms","Garage.Size","Year.Built","Lot.Size")])
+```
+The scatterplot matrix show us that the response variable *Sales Price* almost have a linear relationship with all other predictive variables,and the relationship across predictors are weak.
+
+
+#### (b)
+```{r,echo=FALSE,warning=FALSE}
+# fit a first-order model using all predictors
+model.1<-lm(Sales.Price~.,data = sales)
+par(mfrow=c(2,2))
+plot(model.1)
+```
+
+    Residual vs Fitted values in plot(1) has a trend of funnel shape,which indicates error terms in model has a nonconstant variables.This is not To meet the equal variance conditions;
+    The QQ-plot of residual in plot(2) show us that the error term in model is not to meet the normality condition;
+    And the plot(3),(4) tell us that there are outliers in raw dataset.
+    So model assumptions are violated.
+
+Make a transformation in predictive variables *Square.Feet,Lot.Size* and response variable *Sales.Price* with **log10**
+
+```{r,warning=FALSE,echo=FALSE}
+sales.new<-sales
+LgSales<-log10(sales.new$Sales.Price)
+LgSquare.Feet<-log10(sales.new$Square.Feet)
+LgLot.Size<-log10(sales.new$Lot.Size)
+
+sales.new$Sales.Price<-LgSales
+sales.new$Square.Feet<-LgSquare.Feet
+sales.new$Lot.Size<-LgLot.Size
+
+
+model.2<-lm(Sales.Price~.,data = sales.new)
+par(mfrow=c(2,2))
+plot(model.2)
+```
+Afther the data transformation ,we bulid the model again.According to the plot of model.These graph show us that model assumations are not violated.
+
+#### (c)
+
+* i
+```{r,warning=FALSE,echo=FALSE}
+pairs(sales.new[,c("Sales.Price","Square.Feet","Number.bedrooms","Number.Bathrooms","Garage.Size","Year.Built","Lot.Size")])
+```
+The linear relationship perform more stronger in scatterplot of response variable and predictive variables.
+
+
+* ii
+*Air.Condition,Pool,Quality,Style,Adjacent.to.Highway* are qualitative variables
+```{r,echo=FALSE,warning=FALSE}
+require(car)
+#qualitative.vars<-sales.new[,c("Sales.Price","Air.Condition","Pool","Quality","Style","Adjacent.to.Highway")]
+
+par(mfrow=c(2,3))
+r<-Boxplot(Sales.Price~Air.Condition,data = sales.new)
+r<-Boxplot(Sales.Price~Pool,data = sales.new)
+r<-Boxplot(Sales.Price~Quality,data = sales.new)
+r<-Boxplot(Sales.Price~Style,data = sales.new)
+r<-Boxplot(Sales.Price~Adjacent.to.Highway,data = sales.new)
+```
+
+
+* iii
+```{r,warning=FALSE,echo=FALSE}
+require(car)
+avPlots(model.2,terms = ~Square.Feet+Number.bedrooms+Number.Bathrooms+Garage.Size+Year.Built+Lot.Size)
+```
+
+* iv
+
+   Based on i and iii,the plot show us that *Square.Feet*,*Number.Bathrooms*,*Year.Built* and *Lot.size* has  a strong linear correlation with the dependent variable respectively.
+In ii,boxplot show that *Air.condition*,*Pool*,*Quality* has more bigger difference against response compared to other qualitative variables.
+   So,I decide use *Square.Feet*,*Number.Bathrooms*,*Year.Built*,*Lot.size*,*Air.condition*,*Pool*,*Quality* as predictors in model.The functional form is :
+
+*   *Sales.Price*~*Square.Feet*+*Number.Bathrooms*+*Year.Built*+*Air.condition*+*Pool*+*Quality*
+
+
+
+### 3.Model building
+
+#### (a)
+
+```{r,echo=FALSE,warning=FALSE}
+##  function : Variable combination to establish a linear model
+Combn.FUN<-function(data,criteria="AIC",num.predictors=1){
+  predictors<-setdiff(colnames(data),"Sales.Price")
+  res<-combn(predictors,m=num.predictors,FUN = function(v){
+    if(num.predictors==1){
+      form<-paste0("Sales.Price","~",v)
+      form<-as.formula(form)
+    }else{
+      form<-paste0("Sales.Price","~",paste(as.vector(v),collapse = "+"))
+      form<-as.formula(form)
+    }
+    model<-lm(form,data=data)
+    if(criteria=="AIC"){
+      c<-AIC(model)
+    }
+    if(criteria=="BIC"){
+      c<-BIC(model)
+    }
+    if(criteria=="adj.r"){
+      c<-summary(model)$adj.r.squared
+    }
+    return(c)
+  })
+  
+}
+
+## For each numver of variable, select only the best variables of the model criteria.
+Step.variable<-function(data,criteria="AIC"){
+  predictors<-setdiff(colnames(data),"Sales.Price")
+  N<-length(predictors)
+  result<-list()
+  for(i in 1:N){
+  
+    v.all<-combn(predictors,i)
+    cri<-Combn.FUN(data,criteria,num.predictors = i)
+    
+    if(criteria=="AIC"){
+      idx<-which.min(cri)
+    }
+    if(criteria=="BIC"){
+      idx<-which.min(cri)
+    }
+    if(criteria=="adj.r"){
+      idx<-which.max(cri)
+    }
+    v<-v.all[,idx]
+    res<-list(criteria=cri[idx],variables=v)
+    
+    result[[i]]<-res
+  }
+  return(result)
+}
+
+criteria.to.DF<-function(criteria.list){
+  n<-length(criteria.list)
+  df<-data.frame()
+  for(i in 1:n){
+    cri<-criteria.list[[i]]$criteria
+    variables<-criteria.list[[i]]$variables
+    df<-rbind(df,data.frame(cri,length(variables)))
+  }
+  colnames(df)<-c("criteria","number.variables")
+  return(df)
+}
+```
+
+
+```{r,warning=FALSE,echo=FALSE}
+#plot criteria vs number of variables
+res.aic<-Step.variable(data = sales.new,criteria = "AIC")
+res.bic<-Step.variable(data = sales.new,criteria = "BIC")
+res.adj.r<-Step.variable(data = sales.new,criteria = "adj.r")
+
+aic.df<-criteria.to.DF(res.aic)
+bic.df<-criteria.to.DF(res.bic)
+adj.r.df<-criteria.to.DF(res.adj.r)
+
+par(mfrow=c(1,3))
+plot(aic.df$number.variables,aic.df$criteria,type='b',col="red",xlab = "number of variables",ylab = "AIC")
+
+plot(bic.df$number.variables,bic.df$criteria,type='b',col="red",xlab = "number of variables",ylab = "BIC")
+
+plot(adj.r.df$number.variables,adj.r.df$criteria,type='b',col="red",xlab = "number of variables",ylab = "Adj.r.square")
+
+
+```
+
+   According to the plot above,when numberof variables increase,the *AIC* decrease,and  when number is 9,the *AIC* is not changed again. *BIC* is decremented before 4, increasing after 4,and is  minimum at 4.*Adj.r.square*  has been increasing,and stop at number is 9 and is not changed again.These tell us that  the criteria optimized for models of different sizes.
+   
+   
+#### (b)
+```{r,echo=FALSE,warning=FALSE}
+Pick.n.Model<-function(result.list,critera,pick=5){
+  df<-criteria.to.DF(result.list)
+  if(critera=="AIC"){
+    df<-df[order(df$criteria,decreasing = FALSE),]
+  }
+  if(critera=="BIC"){
+    df<-df[order(df$criteria,decreasing = FALSE),]
+  }
+  if(critera==""){
+    df<-df[order(df$criteria,decreasing = FALSE),]
+  }
+  if(critera=="adj.r"){
+    df<-df[order(df$criteria,decreasing = TRUE),]
+  }
+  idx<-as.integer(df$number.variable[1:pick])
+  
+  vars<-lapply(idx,function(i){return(result.list[[i]]$variables)})
+  return(vars)
+}
+```
+
+```{r,warning=FALSE,echo=FALSE}
+# AIC criteria
+cat("Five model variable subsets in AIC:....","\n")
+Pick.n.Model(res.aic,"AIC")
+
+# BIC criteria
+cat("Five model variable subsets in BIC:....","\n")
+Pick.n.Model(res.bic,"BIC")
+
+# Adi.r.square criteria
+cat("Five model variable subsets in Adj.r.square:....","\n")
+Pick.n.Model(res.adj.r,"adj.r")
+```
+According to the result ,there models are generally the similiar.variable *Square.Feet* 
+is consistently present in all the ¡°best¡± sub-models.
+
+
+#### (c)
+```{r,warning=FALSE,echo=FALSE}
+model.3<-step(model.2,scope = list(lm(Sales.Price~1,data = sales)),direction = "both",trace = FALSE)
+print(model.3)
+```
+
+We can get the stepwise model  function from the above result.This model is :
+
+* *Sales.Price*~*Square.Feet* + *Number.Bathrooms* + *Garage.Size* + 
+    *Pool* + *Year.Built* + *Quality* + *Style* + *Lot.Size* + *Adjacent.to.Highway*
+    
+This model is identified by this procedure the same as any of the one identified in part
+(b).
+
+
+
+#### (d)
+I pick the two model below:
+
+* 1) model.3: *Sales.Price*~*Square.Feet* + *Number.Bathrooms* + *Garage.Size* + 
+          *Pool* + *Year.Built* + *Quality* + *Style* + *Lot.Size* + *Adjacent.to.Highway*
+    
+* 2) model.4:  *Sales.Price*~*Square.Feet* + *Number.Bathrooms* + *Garage.Size* +*Year.Built* +              *Quality*  + *Lot.Size* 
+
+
+
+### 4.Model Diagnostic
+
+#### (a)
+```{r,warning=FALSE,echo=FALSE}
+# the modlel from  2.part(d)
+model.3<-lm(Sales.Price~Square.Feet+Number.Bathrooms+Garage.Size+Pool+Year.Built+
+             Quality+Style+Lot.Size+Adjacent.to.Highway,data = sales.new)
+
+par(mfrow=c(2,2))
+plot(model.3)
+
+
+model.4<-lm(Sales.Price~Square.Feet+Number.Bathrooms+Garage.Size+Year.Built+
+             Quality+Lot.Size,data = sales.new)
+
+par(mfrow=c(2,2))
+plot(model.4)
+```
+
+The ¡°traditional¡± residual plots of the picked model show that,the errom term in two model both meet the cosntannt variance and k normality assumations.
+
+
+
+
+#### (b)
+
+```{r,warning=FALSE,echo=FALSE}
+require(MASS)
+#  function to get Studentized Deleted Residuals
+student.res.del<-function(model){
+  stud.res<-MASS::studres(model)  # student reesidula
+  resid<-residuals(model)  #residual
+  
+  df<-model$df.residu
+  temp<-(resid/stud.res)^2*df  # SSE*(1-hii)
+  stud.res.del<-resid*sqrt(df-1)/sqrt(temp-resid^2) # Studentized Deleted Residuals
+  return(stud.res.del)
+}
+```
+
+```{r,warning=FALSE,echo=FALSE}
+resid.3<-residuals(model.3)
+deviance.3<-deviance(model.3)
+df.3<-model.3$df.residual
+semi.student.res.3<-resid.3/(deviance.3/df.3)
+stud.re.del.3<-student.res.del(model.3)  #Studentized Deleted Residuals of model 3
+
+plot(fitted(model.3),stud.re.del.3,xlab = "fitted value",ylab = "Deleted Studentized Residual",main = "Deleted Studentized Residual vs Fitted value(model.3)")
+abline(h=0,col="red")
+
+
+cat("Use the t-test to compare difference between semi-studentized
+residuals  and deleted studentized residual...","\n")
+t.test(semi.student.res.3,stud.re.del.3)
+#p.value<-t.test(semi.student.res.3,stud.re.del.3)$p.value
+```
+The *p-value* of the test is `r t.test(semi.student.res.3,stud.re.del.3)$p.value `,the p-value is less than 0.05,which inicates that there is no difference between them.
+
+```{r,warning=FALSE,echo=FALSE}
+resid.4<-residuals(model.4)
+deviance.4<-deviance(model.4)
+df.4<-model.4$df.residual
+semi.student.res.4<-resid.4/(deviance.4/df.4)
+stud.re.del.4<-student.res.del(model.4)  #Studentized Deleted Residuals of model 4
+
+plot(fitted(model.4),stud.re.del.4,xlab = "fitted value",ylab = "Deleted Studentized Residual",main = "Deleted Studentized Residual vs Fitted value(model.4)")
+abline(h=0,col="red")
+
+
+cat("Use the t-test to compare difference between semi-studentized
+residuals  and deleted studentized residual...","\n")
+t.test(semi.student.res.4,stud.re.del.4)
+```
+The *p-value* of the test is `r t.test(semi.student.res.4,stud.re.del.4)$p.value `,the p-value is less than 0.05,which inicates that there is no difference between them.
+
+#### (c)
+```{r,warning=FALSE,echo=FALSE}
+summary(model.3)
+summary(model.4)
+```
+   In model *Sales.Price*~*Square.Feet* + *Number.Bathrooms* + *Garage.Size* + *Pool* + *Year.Built* + *Quality* + *Style* + *Lot.Size* + *Adjacent.to.Highway*,not all predictors marginally  are significant,but in model *Sales.Price*~*Square.Feet* + *Number.Bathrooms* + *Garage.Size* +*Year.Built* + *Quality*  + *Lot.Size* ,all the predictors marginally are significant.
+   The first model R.Square is *`r summary(model.3)$adj.r.squared`*,and in second model R.Square is *`r summary(model.4)$adj.r.squared`*.According to the result ,we know that  the R.Square are similiar for these models.
+
+    
+#### (d)
+```{r,warning=FALSE,echo=FALSE}
+distance.3<-cooks.distance(model.3)  # cook distance
+distance.4<-cooks.distance(model.4)
+
+par(mfrow=c(2,2))
+plot(model.3, which=4, cook.levels=cutoff,sub.caption = "model.3")
+plot(1:length(distance.3),distance.3,xlab = "case number",ylab = "cook.distance",main="case number  vs cook.distance(model.3)")
+#abline(h=2/sqrt(length(distance.3)),col="red")
+
+
+plot(model.4, which=4, cook.levels=cutoff,sub.caption ="(model.4)")
+plot(1:length(distance.4),distance.3,xlab = " case number",ylab = "cook.distance",
+     main="case number  vs cook.distance(model.3)")
+#abline(h=2/sqrt(length(distance.4)),col="red")
+```
+According to the plot,the cook distance of model.3 show us that ,the observation **11,96,514** are outliers;the cook distance of model.4 show us that ,the observation **11,96,161** are outliers.So we remove the observation:11,96,161,514.
+
+
+#### (e)
+```{r,echo=FALSE,warning=FALSE}
+sales.new<-sales.new[-c(11,96,161,414),]  # delete outliers
+# refit model
+model.3<-lm(Sales.Price~Square.Feet+Number.Bathrooms+Garage.Size+Pool+Year.Built+
+             Quality+Style+Lot.Size+Adjacent.to.Highway,data = sales.new)
+
+
+
+model.4<-lm(Sales.Price~Square.Feet+Number.Bathrooms+Garage.Size+Year.Built+
+             Quality+Lot.Size,data = sales.new)
+```
+
+
+
+### 5.Model Validation
+
+#### (a)
+```{r,warning=FALSE,echo=FALSE}
+set.seed(20181201)
+n<-dim(sales.new)[1]
+test.idx<-sample(1:n,size = ceiling(0.2*n))
+test<-sales.new[test.idx,]
+
+pred.3<-predict(model.3,newdata = test)
+MSPR.3<-sum((test$Sales.Price-pred.3)^2)/dim(test)[1]  # MSPR
+MSE.3<-sum(residuals(model.3)^2)/(model.3$df.residual) #MSE
+
+
+pred.4<-predict(model.4,newdata = test)
+MSPR.4<-sum((test$Sales.Price-pred.4)^2)/dim(test)[1]
+MSE.4<-sum(residuals(model.4)^2)/(model.4$df.residual)
+```
+   According to the result we get from the above ,the  mean squared prediction error
+(*MSPR*) is `r MSPR.3 `,the estimated *MSE* is `r MSE.3` in **model.3**;the mean squared prediction error (*MSPR*) is `r MSPR.4 `,the estimated *MSE* is `r MSE.4` in **model.4**.
+And the absolute error between *MSPR* and *MSE* in **model.3** is`r abs(MSPR.3-MSE.3)`;the absolute error between *MSPR* and *MSE* in **model.4** is `r abs(MSPR.4-MSE.4)`.And we can known that the comparisonis is smaller in both model,which tell us that these two model both have good goodness of fit,that is the two model's adequacy are both good.
+
+
+
+#### (b)
+```{r,echo=FALSE,warning=FALSE}
+# model.3
+model.3.val<-lm(Sales.Price~Square.Feet+Number.Bathrooms+Garage.Size+Pool+Year.Built+
+             Quality+Style+Lot.Size+Adjacent.to.Highway,data = test)
+
+
+# MSE
+MSE.3.val<-deviance(model.3.val)/model.3.val$df.residual
+
+# adj.r.squared
+val.adj.r.square.3<-summary(model.3.val)$adj.r.squared
+
+# confidence intervals of estimated coefficient
+cat("The confidence intervals of estimated coefficient with origin dataset:","\n")
+confint.lm(model.3)
+
+cat("The confidence intervals of estimated coefficient with validattion dataset:","\n")
+confint.lm(model.3.val)
+```
+
+The *MSE* in origin *model.3* and *model.3* with validation dataset are **`r MSE.3`** and**`r MSE.3.val`**,and the R.Square are **`r summary(model.3)$adj.r.squared`** and **`r val.adj.r.square.3` respectively.We can see that the absolute error of *MSE* is `r abs(MSE.3-MSE.3.val)`**,the absolute error of *R.Square* is **`r abs(summary(model.3)$adj.r.squared-val.adj.r.square.3)`**.And  the absolute errors of confidence intervals of estimated coefficient in  both dataset are small tooOf course,the absolute error  of them are small,which indicate that there is litte difference in model built with origin dataset and validation dataset.
+
+
+```{r,warning=FALSE,echo=FALSE}
+# model.4
+model.4.val<-lm(Sales.Price~Square.Feet+Number.Bathrooms+Garage.Size+Year.Built+
+             Quality+Lot.Size,data = test)
+
+# MSE
+MSE.4.val<-deviance(model.4.val)/model.4.val$df.residual
+
+# adj.r.squared
+val.adj.r.square.4<-summary(model.4.val)$adj.r.squared
+
+# confidence intervals of estimated coefficient
+cat("The confidence intervals of estimated coefficient with origin dataset:","\n")
+confint.lm(model.4)
+
+cat("The confidence intervals of estimated coefficient with validattion dataset:","\n")
+confint.lm(model.4.val)
+```
+
+The *MSE* in origin *model.4* and *model.4* with validation dataset are **`r MSE.4`** and **`r MSE.4.val`**,and the R.Square are **`r summary(model.4)$adj.r.squared`** and 
+**`r val.adj.r.square.4`** respectively.We can see that the absolute error of *MSE* is **`r abs(MSE.4-MSE.4.val)`**,the absolute error of *R.Square* is **`r abs(summary(model.4)$adj.r.squared-val.adj.r.square.4)`**.And  the absolute errors of confidence intervals of estimated coefficient in  both dataset are small too.Of course,the absolute error  of them are small,which indicate that there is litte difference in model built with origin dataset and validation dataset.
+
+
+### 6.Conclusion
+
+I pick *model.4* to present to the city tax assessor.In  validation part we know that ,the absolute error between origin dataset and validation dataset is small,and the the R.Square is **`r summary(model.4)$adj.r.squared`** in origin model.And the change of confidence intervals of estimated coefficient are smaller than *model.3*.In a word,*model.4* is more robustand has a goodness of fit.
+
+
+```{r,warning=FALSE,echo=FALSE}
+summary(model.4)  # with all the dataset
+```
+   According to the summary fo model,we will interpret some of the regression coefficients.The variable *Square.Feet* represent the finished area of residence,the estmated coefficient is *`r coefficients(model.4)["Square.Feet"]`*,which indicates that has a positive effect on *sales price* and when log10 *Square.Feet* add one unit,the log10 *sales price* will add about 0.7 unit if fixed others.And *Number.Bathrooms*,*Garage.Size* have simialiar positive effect on response,if fixed others,when there two add one unit,*sales price* will add about 0.2 unit respectively.And *Lot.Size* also has positive effect and contributes about 0.13 unit to response.But *Quality* tell us that,medium and low quality will habe negative effect on *sales price*,and they  contribute about -0.13 and -0.15 unit to response respectively.According to common sense,above explanation are reasonable and consistented with reality.These variables are main effective factors on sales price in reality.And I think *Square.Feet* is the most importanct in determining sales price and it's impact is the biggest.

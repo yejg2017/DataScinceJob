@@ -1,0 +1,182 @@
+---
+title: "Interaction"
+author: "Ian_Curtis"
+date: "2018/11/27"
+output:
+  html_document: default
+  word_document: default
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+# install & load packages
+# install.packages("readxl")
+library(readxl)
+library(tidyverse)
+library(ggplot2)
+library(corrplot)
+```
+
+## Interaction Overview
+
+<!-- Comment About Interaction -->
+
+## Interaction R Part A
+
+### import data
+
+```{r importdata}
+IceCreamExcel <- read_excel('IceCreamExcel.xlsx')
+head(IceCreamExcel)
+str(IceCreamExcel)
+summary(IceCreamExcel)
+```
+
+### exclude variable x(id) 
+
+```{r ICD}
+ICD <- subset(IceCreamExcel, select = -c(id))
+str(ICD)
+summary(ICD)
+```
+
+### run correlations
+
+```{r correlations}
+cor(ICD)
+```
+The correlation matrix show us that,the correlation in variable *temp* and *cons*  is about **0.788**,which mean these two variable have strong correlationship.And  the other variables are almost independent.
+
+### corr visualization
+
+```{r}
+corr <- cor(ICD)
+# corrplot::corrplot(corr = corr)
+corrplot::corrplot(corr = corr, order = "AOE", tl.pos = "tp")
+corrplot::corrplot(corr = corr,  
+         add = TRUE, type = "lower", method = "number", order = "AOE", 
+         col = "black", diag = FALSE, tl.pos = "n", cl.pos = "n")
+```
+The correlations plot only is an another method for explanation of correlation matrix,what it tells us is the same.
+
+### use Hmisc
+```{r usehmisc}
+library(Hmisc)
+rcorr(as.matrix(ICD))
+```
+The **rcoor** is not only provided correlation matrix,it also provide test in correlation across variable.And only *p-value* in test of *temp* and *cons* is smaller than 0.05,that is ,*temp* is correlated with *cons*
+
+
+## Interaction R Part B
+
+### create some new var, run correlations 
+
+```{r}
+ICD <- ICD %>% mutate(
+    Income_by_price = income * price,
+    Income_by_temp  = income * temp ,
+    Price_by_temp   = price * temp
+) %>% mutate(
+    income_mc = scale(income, center = TRUE),
+    price_mc  = scale(price, center = TRUE),
+    temp_mc   = scale(temp, center = TRUE)
+)
+
+summary(ICD)
+rcorr(as.matrix(ICD))
+```
+
+### create two_way interaction terms and view corr
+
+```{r}
+ICD <- ICD %>% mutate(
+    Income_by_price = income_mc * price_mc,
+    Income_by_temp  = income_mc * temp_mc ,
+    Price_by_temp   = price_mc * temp_mc
+)
+
+summary(ICD)
+rcorr(as.matrix(ICD))
+```
+This step add variable interaction term in raw data.
+
+## Interaction R Part C
+### testing linear model w/no interactions
+```{r}
+model <- lm(cons ~ income + price + temp, data = ICD)
+summary(model)
+library(car)
+
+vif(model)
+```
+According to the result of this model,and the function **Vif** ,which compute each variable's **Variance Inflation Factors**;and vif value in each variable is smaller than 10,which mean that  collinearity  in model does not exist.And the *R.Square* in thsis model is about **0.68**.
+
+### testing linear model w/no interactions without pequod, note use of mean center predictoros
+
+```{r}
+model1 <- lm(cons ~ income + price + temp + Income_by_temp + 
+                 Income_by_price + Price_by_temp, data = ICD)
+summary(model1)
+vif(model1)
+```
+This new model add interaction term.Accordding to the summary of the new model,we can know that all predictors'**Variance Inflation Factors**  in this model ara still smaller than 10,which mean that  collinearity  in new model does not exist too,but in **R.Square** is about **0.72**,that is to said this model perform better than origin model.
+
+### testing linear model w/no interactions using pequod
+
+```{r}
+library(pequod)
+
+modelpe <- lmres(cons ~ income + price + temp, data = ICD)
+summary(modelpe)
+
+modelpe1 <- lmres(cons ~ income * price + income * temp + price * temp, 
+                 centered = c("income", "price", "temp"), data = ICD)
+summary(modelpe1)
+```
+
+In model that lack of interactions,the coefficient of *income* and *temp* is significant,and these two variables both has positive effect on response *cons*;But in the model that add interactions,the coefficient of *itercept*,*temp* and *iteraction of income and price* are significant.The  coefficient result change,but the latter model perform better based on *R.Square*.However,the coefficient of interaction is greater than other,and is is negative,that is ,the interaction has a more greater effect on response.And the comparion between the two model,interaction term should add in linear model.
+
+## Interaction R Part D
+
+### Simple slope test and plot for income by price interatcion
+
+```{r}
+S_slopes <- simpleSlope(modelpe1, pred = "income", mod1 = "price")
+PLotIncome_by_proce <- PlotSlope(S_slopes)
+PLotIncome_by_proce
+summary(S_slopes)
+```
+
+The result show us that,the slope is significant when price is low,and is not sigificant when price is high.And the *cons* change whether is positive or not is  effect signifivantly by price
+
+## Interaction R Part E
+### creating and testing:
+testing three-way interactions without pequod, note use of maen center predictors
+
+```{r}
+ICD <- ICD %>% mutate(threeway = income_mc * price_mc * temp_mc)
+model2 <- lm(cons ~ income + price + temp + Income_by_temp + 
+                 Income_by_price + Price_by_temp + threeway, data = ICD)
+summary(model2)
+vif(model2)
+
+modelpe2 <-  lmres(cons ~ income * price * temp, 
+                 centered = c("income", "price", "temp"), data = ICD)
+summary(modelpe2)
+```
+According to  the models show us that,the result is  the model with threeway interaction perform better based on *R.Square*,The *R.Square* is about 0.75.And other resultr is simliar with the model with twoway interaction.However,in this time,the coefficinet of interaction of income_price,income_temp,income_price_temp are sigificant,and the effect of them are all negative on response.
+
+### Simple slope test and plot for the three-way interatcion
+```{r}
+S_slopes_3way <- simpleSlope(modelpe2, pred = "income", mod1 = "temp", mod2 = "price")
+Plot_threeway <- PlotSlope(S_slopes_3way)
+Plot_threeway
+summary(S_slopes_3way)
+```
+
+According to the result of this test,the slope  change sinifcant when temp,price change,which indicates that the *cons* is mianly effect by *income* and *temp*
+ 
+In conclusion,*price* and *temp* are the main effective factor on response *cons*,and their interaction ,treeway interaction  still  have effect on *cons*,but inetractions' effect is less.
+
+
+
